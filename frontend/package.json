@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docker:prod": "docker compose down namorix-thread && docker compose up --build namorix-thread",
+    "docker:build": "docker compose build",
+    "docker:down": "docker compose down"
   },
   "dependencies": {
     "react": "19.2.6",

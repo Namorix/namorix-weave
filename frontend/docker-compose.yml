@@ -1,0 +1,15 @@
+services:
+  namorix-thread:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        - namorix=../../namorix
+    image: namorix/addon-thread:prod
+    container_name: namorix-addon-thread
+    ports:
+      - "5180:5180"
+    labels:
+      - "namorix-addon=true"
+      - "namorix-addon-id=thread"
+      - "namorix-addon-name=Thread"

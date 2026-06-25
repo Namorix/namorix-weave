@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react"
 import { federation } from "@module-federation/vite"
 
 export default defineConfig({
-  base: "http://192.168.31.150:5180/",
+  base: "./",
   plugins: [
     react(),
     federation({
@@ -17,7 +17,7 @@ export default defineConfig({
         "react-dom": { singleton: true },
         "@namorix/core": { singleton: true },
       },
-      dts: false
+      dts: false,
     }),
   ],
   server: {
