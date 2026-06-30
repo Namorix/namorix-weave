@@ -5,7 +5,7 @@
   "description": "Connect and monitor smart home devices across your Thread mesh",
   "version": "0.1.0",
   "category": "net",
-  "icon": "assets/icon.svg",
+  "icon": "https://raw.githubusercontent.com/Namorix/namorix-weave/refs/heads/main/assets/icon.svg",
   "author": "IzeroCs",
   "repo": "https://github.com/Namorix/namorix-weave",
   "image": "namorix/addon-weave",
