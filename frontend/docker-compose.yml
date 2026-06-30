@@ -1,15 +1,17 @@
 services:
-  namorix-thread:
+  namorix-weave:
     build:
       context: .
       dockerfile: Dockerfile
       additional_contexts:
         - namorix=../../namorix
-    image: namorix/addon-thread:prod
-    container_name: namorix-addon-thread
+    image: namorix/addon-weave:prod
+    container_name: namorix-addon-weave
     ports:
       - "5180:5180"
     labels:
       - "namorix-addon=true"
-      - "namorix-addon-id=thread"
-      - "namorix-addon-name=Thread"
+      - "namorix-addon-id=namorix-weave"
+      - "namorix-addon-name=Namorix Weave"
+      - "namorix-addon-author=IzeroCs"
+      - "namorix-addon-description=Connect and monitor smart home devices across your Thread mesh"

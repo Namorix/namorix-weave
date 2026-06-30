@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     federation({
-      name: "addon_thread",
+      name: "addon_weave",
       manifest: true,
       exposes: {
         "./Addon": "./src/mount.tsx",
