@@ -1,5 +1,5 @@
 {
-  "name": "namorix-thread",
+  "name": "namorix-weave",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "docker:prod": "docker compose down namorix-thread && docker compose up --build namorix-thread",
+    "docker:prod": "docker compose down namorix-weave && docker compose up --build namorix-weave",
     "docker:build": "docker compose build",
     "docker:down": "docker compose down"
   },
