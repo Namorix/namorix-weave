@@ -8,7 +8,7 @@
   "icon": "https://raw.githubusercontent.com/Namorix/namorix-weave/refs/heads/main/assets/icon.svg",
   "author": "IzeroCs",
   "repo": "https://github.com/Namorix/namorix-weave",
-  "image": "namorix/addon-weave",
+  "image": "namorix/addon-weave:prod",
   "imageTag": "prod",
   "arch": ["amd64", "arm64"],
 
