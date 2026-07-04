@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Namorix.Weave")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+022ee13737fa0e479a73d93d09de71bf5c74ad49")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cc799e40f0585ec0280a5208cf7f0b02897d8d1c")]
 [assembly: System.Reflection.AssemblyProductAttribute("Namorix.Weave")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Namorix.Weave")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

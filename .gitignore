@@ -1,2 +1,10 @@
 node_modules
-dist
+backend/data
+package-lock.json
+pnpm-lock.yaml
+.idea/
+.codegraph/
+.claude/skills/skill-creator
+.claude/skills/find-skills
+.claude/*.js
+memory/
