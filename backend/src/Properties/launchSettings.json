@@ -9,7 +9,7 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "NMX_API_URL": "http://localhost:5000",
-        "NMX_REGISTRATION_TOKEN": "afe34a5006b94e35b7a61b428e0f1763"
+        "NMX_REGISTRATION_TOKEN": "7ca18701811f49bfb286b51efc07646a"
       }
     },
     "https": {
