@@ -13,7 +13,12 @@
   "arch": ["amd64", "arm64"],
 
   "ports": [
-    { "container": 5180, "protocol": "tcp", "description": "Web frontend" }
+    {
+      "container": 5180,
+      "protocol": "tcp",
+      "description": "Web frontend",
+      "entry": true
+    }
   ],
 
   "boot": "manual",

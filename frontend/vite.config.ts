@@ -20,6 +20,16 @@ export default defineConfig({
       dts: false,
     }),
   ],
+  resolve: {
+    alias: {
+      "@namorix/core":
+      new URL("../../namorix/frontend/packages/core/src", import.meta.url)
+          .pathname,
+    },
+  },
+  optimizeDeps: {
+    exclude: ["@namorix/core"],
+  },
   server: {
     port: 5180,
   },
