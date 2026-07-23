@@ -9,13 +9,13 @@ export default defineConfig({
     federation({
       name: "addon_weave",
       manifest: true,
+      publicPath: "http://localhost:5180/",
       exposes: {
         "./Addon": "./src/mount.tsx",
       },
       shared: {
         react: { singleton: true },
         "react-dom": { singleton: true },
-        "@namorix/core": { singleton: true },
       },
       dts: false,
     }),
@@ -32,6 +32,7 @@ export default defineConfig({
   },
   server: {
     port: 5180,
+    cors: true
   },
   build: {
     target: "esnext",

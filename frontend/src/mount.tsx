@@ -1,13 +1,10 @@
 import { createRoot } from "react-dom/client"
-import type { AddonContext } from "@namorix/core"
+import {WeaveApp} from "./App.tsx";
 
 export function mount(
   container: HTMLElement,
-  context: AddonContext,
 ): () => void {
   const root = createRoot(container, {})
-
-  root.render(<h1>Hello World — {context.addonId}</h1>)
-
+  root.render(<WeaveApp/>)
   return () => root.unmount()
 }
