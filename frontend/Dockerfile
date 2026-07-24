@@ -6,6 +6,8 @@ COPY . /app/namorix-weave/frontend/
 
 COPY --from=namorix frontend/packages/core /app/namorix/frontend/packages/core/
 COPY --from=namorix frontend/tsconfig.base.json /app/namorix/frontend/tsconfig.base.json
+COPY --from=namorix frontend/packages/styles /app/namorix/frontend/packages/styles/
+COPY --from=namorix frontend/packages/ui /app/namorix/frontend/packages/ui/
 
 WORKDIR /app/namorix/frontend/packages/core
 RUN corepack prepare pnpm@latest --activate
