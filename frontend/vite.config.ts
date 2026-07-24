@@ -2,14 +2,14 @@ import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import { federation } from "@module-federation/vite"
 
-export default defineConfig({
+export default defineConfig((config) => ({
   base: "./",
   plugins: [
     react(),
     federation({
       name: "addon_weave",
       manifest: true,
-      publicPath: "http://localhost:5180/",
+      publicPath: "http://localhost:5100/",
       exposes: {
         "./Addon": "./src/mount.tsx",
       },
@@ -21,25 +21,29 @@ export default defineConfig({
     }),
   ],
   resolve: {
-    alias: {
-      "@namorix/core":
-      new URL("../../namorix/frontend/packages/core/src", import.meta.url)
-          .pathname,
-    },
+    alias:
+      config.mode !== "production"
+        ? {
+            "@namorix/core": new URL(
+              "../../namorix/frontend/packages/core/src",
+              import.meta.url,
+            ).pathname,
+          }
+        : undefined,
   },
   optimizeDeps: {
     exclude: ["@namorix/core"],
   },
   server: {
-    port: 5180,
-    cors: true
+    port: 5100,
+    cors: true,
   },
   build: {
     target: "esnext",
   },
   preview: {
-    port: 5180,
+    port: 5100,
     host: "0.0.0.0",
     cors: true,
   },
-})
+}))

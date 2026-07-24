@@ -1,10 +1,4 @@
-import { createRoot } from "react-dom/client"
-import {WeaveApp} from "./App.tsx";
+import { WeaveApp } from "./App.tsx"
+import { createMount } from "../../../namorix/frontend/packages/core"
 
-export function mount(
-  container: HTMLElement,
-): () => void {
-  const root = createRoot(container, {})
-  root.render(<WeaveApp/>)
-  return () => root.unmount()
-}
+export const mount = createMount(WeaveApp)

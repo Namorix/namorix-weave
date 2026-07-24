@@ -8,7 +8,7 @@ services:
     image: namorix/addon-weave:prod
     container_name: namorix-addon-weave
     ports:
-      - "5180:5180"
+      - "5100:5100"
     labels:
       - "namorix-addon=true"
       - "namorix-addon-id=namorix-weave"
