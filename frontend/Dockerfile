@@ -14,7 +14,7 @@ RUN pnpm install
 RUN pnpm build
 
 WORKDIR /app/namorix-weave/frontend
-RUN printf 'allowBuilds:\n  esbuild: true\n' > pnpm-workspace.yaml
+RUN printf 'allowBuilds:\n  esbuild: true\n  "@parcel/watcher": true\n' > pnpm-workspace.yaml
 RUN CI=true pnpm install
 RUN pnpm build
 
