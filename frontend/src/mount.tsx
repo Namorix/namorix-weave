@@ -1,4 +1,4 @@
-import { WeaveApp } from "./App.tsx"
-import { createMount } from "../../../namorix/frontend/packages/core"
+import { WeaveApp } from "./WeaveApp.tsx"
+import { createMount } from "@namorix/core"
 
 export const mount = createMount(WeaveApp)

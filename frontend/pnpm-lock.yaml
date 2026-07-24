@@ -11,6 +11,12 @@ importers:
       '@microsoft/signalr':
         specifier: 10.0.0
         version: 10.0.0
+      '@namorix/styles':
+        specifier: link:../../namorix/frontend/packages/styles
+        version: link:../../namorix/frontend/packages/styles
+      '@namorix/ui':
+        specifier: link:../../namorix/frontend/packages/ui
+        version: link:../../namorix/frontend/packages/ui
       '@reduxjs/toolkit':
         specifier: 2.12.0
         version: 2.12.0(react-redux@9.3.0(@types/react@19.2.14)(react@19.2.6)(redux@5.0.1))(react@19.2.6)
@@ -28,8 +34,8 @@ importers:
         specifier: 1.15.4
         version: 1.15.4(node-fetch@2.7.0)(typescript@6.0.3)(vite@8.0.13)
       '@namorix/core':
-        specifier: file:../../namorix/frontend/packages/core
-        version: file:../../namorix/frontend/packages/core(react-dom@19.2.6(react@19.2.6))(typescript@6.0.3)
+        specifier: link:../../namorix/frontend/packages/core
+        version: link:../../namorix/frontend/packages/core
       '@types/react':
         specifier: 19.2.14
         version: 19.2.14
@@ -112,9 +118,6 @@ packages:
     resolution: {integrity: sha512-44l8xYOermWM0hhuTLuGE0AKaX6W2yqQ/hTyVqiEHa23gPHFUNjJs1Cr6+A5fG38XMl+0Vzn11luT3zwp1xJjQ==}
     peerDependencies:
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
-
-  '@namorix/core@file:../../namorix/frontend/packages/core':
-    resolution: {directory: ../../namorix/frontend/packages/core, type: directory}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -839,17 +842,6 @@ snapshots:
       - typescript
       - utf-8-validate
       - vue-tsc
-
-  '@namorix/core@file:../../namorix/frontend/packages/core(react-dom@19.2.6(react@19.2.6))(typescript@6.0.3)':
-    dependencies:
-      i18next: 26.2.0(typescript@6.0.3)
-      react: 19.2.6
-      react-i18next: 17.0.8(i18next@26.2.0(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(typescript@6.0.3)
-      react-router-dom: 7.15.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-    transitivePeerDependencies:
-      - react-dom
-      - react-native
-      - typescript
 
   '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.10.0)(@emnapi/runtime@1.10.0)':
     dependencies:

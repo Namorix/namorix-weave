@@ -15,7 +15,9 @@ export default defineConfig((config) => ({
       },
       shared: {
         react: { singleton: true },
+        i18next: { singleton: true },
         "react-dom": { singleton: true },
+        "react-i18next": { singleton: true },
       },
       dts: false,
     }),

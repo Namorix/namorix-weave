@@ -12,23 +12,25 @@
     "docker:down": "docker compose down"
   },
   "dependencies": {
+    "@microsoft/signalr": "10.0.0",
+    "@namorix/styles": "link:../../namorix/frontend/packages/styles",
+    "@namorix/ui": "link:../../namorix/frontend/packages/ui",
+    "@reduxjs/toolkit": "2.12.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
-    "react-redux": "9.3.0",
-    "@reduxjs/toolkit": "2.12.0",
-    "@microsoft/signalr": "10.0.0"
+    "react-redux": "9.3.0"
   },
   "devDependencies": {
-    "@namorix/core": "file:../../namorix/frontend/packages/core",
     "@module-federation/vite": "1.15.4",
+    "@namorix/core": "link:../../namorix/frontend/packages/core",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
-    "typescript": "6.0.3",
-    "vite": "8.0.13",
-    "prettier": "3.8.3",
     "i18next": "26.2.0",
+    "prettier": "3.8.3",
     "react-i18next": "17.0.8",
-    "react-router-dom": "7.15.1"
+    "react-router-dom": "7.15.1",
+    "typescript": "6.0.3",
+    "vite": "8.0.13"
   }
 }

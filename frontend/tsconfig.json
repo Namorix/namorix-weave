@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2023",
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
@@ -15,7 +16,10 @@
     "noFallthroughCasesInSwitch": true,
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@namorix/core": ["../../namorix/frontend/packages/core/src/index.ts"]
+    }
   },
   "include": ["src"]
 }
