@@ -1,0 +1,163 @@
+menu "ESP Thread Border Router"
+
+config LED_STATUS_ENABLE
+    bool "Bật LED trạng thái RGB WS2812 (disabled=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh, router=tím tĩnh, child=xanh dương tĩnh)"
+    default y
+    help
+        LED WS2812/WS2812B addressable RGB LED trên ESP32-S3.
+        ESP32-S3 DevKitC-1: GPIO 48 (onboard LED) hoặc GPIO 5 (external LED).
+
+config LED_STATUS_GPIO
+    int "GPIO cho LED RGB data (WS2812)"
+    depends on LED_STATUS_ENABLE
+    default 48
+    range 0 48
+    help
+        GPIO pin cho data line của WS2812/WS2812B LED.
+        ESP32-S3 DevKitC-1: GPIO 48 cho onboard LED, GPIO 5 cho external LED.
+
+config BR_ETH_W5500_ENABLE
+    bool "Bật Ethernet W5500 (backhaul ưu tiên, SPI)"
+    default y
+    select ETH_USE_SPI_ETHERNET
+    select ETH_SPI_ETHERNET_W5500
+    help
+        BR dùng W5500 qua SPI làm backhaul (chỉ LAN, không Wi-Fi). ESP32-S3 không có EMAC.
+
+if BR_ETH_W5500_ENABLE
+    config BR_ETH_SPI_HOST
+        int "SPI host cho W5500"
+        range 0 2
+        default 2
+        help
+            SPI2 thường dùng để tránh conflict UART RCP (SPI1 có thể dùng cho flash).
+
+    config BR_ETH_SPI_SCLK_GPIO
+        int "W5500 SCLK GPIO"
+        default 12
+        help
+            ESP32-S3: 12 gợi ý cho SPI2.
+
+    config BR_ETH_SPI_MOSI_GPIO
+        int "W5500 MOSI GPIO"
+        default 11
+
+    config BR_ETH_SPI_MISO_GPIO
+        int "W5500 MISO GPIO"
+        default 13
+
+    config BR_ETH_SPI_CS_GPIO
+        int "W5500 CS GPIO"
+        default 10
+
+    config BR_ETH_SPI_CLOCK_MHZ
+        int "SPI clock (MHz)"
+        range 5 40
+        default 20
+
+    config BR_ETH_INT_GPIO
+        int "W5500 INT GPIO (-1 = polling)"
+        range -1 48
+        default 9
+        help
+            Chân interrupt W5500. -1 = dùng polling. Mặc định 9 (tránh conflict SPI/CS và RCP).
+
+    config BR_ETH_RST_GPIO
+        int "W5500 RST (reset) GPIO (-1 = không dùng)"
+        range -1 48
+        default 6
+        help
+            Chân reset W5500. -1 = không nối RST (power-on reset). Mặc định 6 (tránh conflict RCP 7/8).
+
+    config BR_ETH_RST_HOLD_MS
+        int "W5500 RST hold time (ms)"
+        default 200
+        range 10 2000
+        help
+            Thời gian giữ RST ở mức low trước khi thả. Tăng nếu link/init không ổn định.
+
+    config BR_ETH_RST_RELEASE_MS
+        int "W5500 RST release delay (ms)"
+        default 1000
+        range 10 1000
+        help
+            Thời gian đợi sau khi thả RST trước khi init SPI/driver.
+
+    config BR_ETH_POLLING_MS
+        int "W5500 polling period (ms, khi INT=-1)"
+        default 20
+        help
+            Chu kỳ poll khi không dùng interrupt; bỏ qua khi dùng INT.
+
+    config BR_ETH_LINK_TIMEOUT_MS
+        int "Timeout chờ IPv4 (DHCP) trên Ethernet (ms)"
+        default 25000
+        help
+            Chờ có IPv4 (DHCP). Backend cần IPv4 để kết nối BR. IPv6 link-local thường có trước nhưng không đủ; init chỉ thành công khi có DHCP. Nên >= 20s nếu router chậm.
+endif
+
+config BR_FRAME_TCP_PORT
+    int "Port TCP cho kênh frame (BR listen)"
+    default 5000
+    range 1 65535
+    help
+        BR listen trên port này; dashboard kết nối tới BR_IP:port để gửi/nhận frame.
+
+#
+# RCP: giao tiếp BR ↔ RCP chỉ qua SPI. UART dành sau cho flash/update RCP.
+#
+config BR_RCP_SPI_HOST
+    int "SPI host cho RCP (1=SPI2, 2=SPI3)"
+    range 1 2
+    default 1
+    help
+        Thường dùng SPI1 (1) nếu W5500 dùng SPI2 để tránh conflict.
+
+config BR_RCP_SPI_SCLK_GPIO
+    int "RCP SPI SCLK GPIO"
+    default 4
+    help
+        Không trùng W5500 (10,11,12,13) và RCP RST/BOOT (7,8).
+
+config BR_RCP_SPI_MOSI_GPIO
+    int "RCP SPI MOSI GPIO"
+    default 5
+
+config BR_RCP_SPI_MISO_GPIO
+    int "RCP SPI MISO GPIO"
+    default 2
+
+config BR_RCP_SPI_CS_GPIO
+    int "RCP SPI CS GPIO"
+    default 3
+    help
+        Không trùng W5500 CS (10).
+
+config BR_RCP_SPI_IRQ_GPIO
+    int "RCP SPI IRQ (intr) GPIO (-1 = poll)"
+    range -1 48
+    default 1
+    help
+        Chân interrupt từ RCP. Không trùng W5500 INT (9). Nối từ H2 GPIO4 (RCP IRQ).
+
+config BR_RCP_SPI_CLOCK_MHZ
+    int "RCP SPI clock (MHz)"
+    range 1 40
+    default 10
+
+#
+# RCP control pins (RESET/BOOT) — dùng chung cho UART và SPI
+#
+config BR_RCP_RESET_GPIO
+    int "RCP RESET GPIO"
+    default 7
+    help
+        Host GPIO nối chân RESET của RCP (ESP32-H2).
+
+config BR_RCP_BOOT_GPIO
+    int "RCP BOOT GPIO"
+    default 8
+    help
+        Host GPIO nối chân BOOT của RCP (download mode).
+
+endmenu

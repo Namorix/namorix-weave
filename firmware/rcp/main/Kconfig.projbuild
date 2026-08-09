@@ -1,0 +1,36 @@
+# rcp: giao tiếp Host (br-host) chỉ qua SPI.
+# UART dành sau cho flash/update RCP, không dùng cho BR ↔ RCP.
+
+menu "RCP SPI (Host connection)"
+
+config RCP_SPI_MOSI_GPIO
+    int "SPI MOSI GPIO (Host → RCP)"
+    default 3
+    help
+        Trên RCP: nhận data từ Host. Khớp với chân MOSI trên Host (Host MOSI nối RCP MOSI).
+
+config RCP_SPI_MISO_GPIO
+    int "SPI MISO GPIO (RCP → Host)"
+    default 1
+    help
+        Trên RCP: gửi data tới Host. Khớp với chân MISO trên Host.
+
+config RCP_SPI_SCLK_GPIO
+    int "SPI SCLK GPIO"
+    default 0
+
+config RCP_SPI_CS_GPIO
+    int "SPI CS GPIO"
+    default 2
+    help
+        Chip select từ Host.
+
+config RCP_SPI_IRQ_GPIO
+    int "SPI IRQ GPIO (RCP báo 'data ready' cho Host, -1 = không dùng)"
+    range -1 48
+    default 4
+    help
+        Trên H2: kéo chân này khi có frame gửi Host. Không dùng GPIO9 (BOOT strapping).
+        Nối chân này tới BR_RCP_SPI_IRQ_GPIO trên S3. SPI đã dùng 0,1,2,3 nên mặc định 4.
+
+endmenu
