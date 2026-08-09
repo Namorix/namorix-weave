@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5101",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "NMX_DESKTOP_API_URL": "http://localhost:5001",
+        "NMX_DESKTOP_GRPC_URL": "http://localhost:5002",
+        "NMX_REGISTRATION_TOKEN": "40b42f2c83f844c2a3d8ef6afbc60087"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:7111;http://localhost:5157",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
