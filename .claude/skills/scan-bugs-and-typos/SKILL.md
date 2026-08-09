@@ -2,7 +2,8 @@
 name: scan-bugs-and-typos
 description: |
   Scan files changed in git for bugs and spelling errors. Reads only changed files
-  (staged + unstaged) to avoid checking the entire codebase. Separates findings
+  (staged + unstaged) to avoid checking the entire codebase. Covers TS/React
+  frontend, C# backend, and firmware C (CLAUDE.md Rule 11). Separates findings
   into bugs (logic errors) and typos (spelling, naming).
 ---
 
@@ -21,11 +22,13 @@ git diff --cached --name-only # staged changes
 
 Merge both lists, de-duplicate, skip:
 - `node_modules/`
-- `dist/`, `*.lock`, `*.log`
+- `dist/`, `bin/`, `obj/`, `backend/src/data/`
+- `*.lock`, `*.log`
 - `LICENSE`
 - `.idea/`
 - Binary files
 - `*.g.cs`, `*.Designer.cs`, EF migration auto-generated files
+- ESP-IDF build dirs (`firmware/**/build/`, `firmware/**/managed_components/`)
 
 If no changed files found → output "Nothing to scan" and stop.
 
@@ -53,18 +56,24 @@ Look for these patterns:
 | Hardcoded secrets | API keys, passwords in source | TS/C# |
 | Debug code left | `console.log`, `debugger`, `Console.WriteLine` statements | TS/C# |
 | Missing ConfigureAwait | async without `.ConfigureAwait(false)` in C# library code | C# |
+| Buffer/overflow | Indexing byte arrays without bounds check, unvalidated frame length | C |
+| Endianness | `memcpy`/pointer cast on multi-byte protocol fields instead of BE helpers | C |
+| Unchecked return | Ignoring return of `read()`/`write()`/`send()` without error path | C |
+| Shared state races | Accessing `s_`/`m_` statics without lock or task-safety in RTOS context | C |
+| Bounds of bit fields | Using `changed_mask`/bit-flag enums without masking to defined bits | C |
 
 ### Spelling & Naming Scan
 
 | Check | Flag | Language |
 |-------|------|----------|
-| Typos in comments | Common misspellings (recieve→receive, etc.) | TS/C# |
+| Typos in comments | Common misspellings (recieve→receive, etc.) | TS/C#/C |
 | Typos in string literals | UI strings, error messages visible to user | TS/C# |
 | Inconsistent casing | `userId` vs `UserID`, `API` vs `Api` | TS/C# |
-| Wrong variable naming | camelCase violations (TS), PascalCase violations (C#), UPPER_SNAKE violations | TS/C# |
-| String quotes | TS/JS strings should use double quotes (per CLAUDE.md Rule 10) | TS |
-| Missing Nmx prefix | New UI component without `Nmx` prefix | TS |
+| Wrong variable naming | camelCase violations (TS, Rule 10), PascalCase violations (C#), snake_case violations (C, Rule 11) | TS/C#/C |
+| String quotes | TS/JS strings should use double quotes (CLAUDE.md Rule 10) | TS |
+| Missing Nmx prefix | New shared UI component without `Nmx` prefix (CLAUDE.md Rule 6) | TS |
 | BEM class errors | CSS class not following `nmx-kebab-case` | CSS/SCSS |
+| C naming (Rule 11) | `snake_case_t` types, `{module}_snake_case` functions, `s_`/`m_` statics, `UPPER_SNAKE_CASE` constants/macros, guard `UPPER_SNAKE_H` | C |
 
 ### Step 3: Categorize Findings
 
@@ -73,11 +82,11 @@ Separate into two groups:
 ```
 ## 🐛 Bugs
 - file.ts:42 — Missing await on async function call
-- file.ts:78 — Possible null reference without guard
+- communicate_command.c:120 — Unchecked send() return without error path
 
 ## 📝 Typos & Naming
 - file.ts:15 — "recieve" should be "receive"
-- file.tsx:30 — Component missing Nmx prefix "UserCard" → "NmxUserCard"
+- file.c:30 — Static `pendingFrameId` should be `s_pending_frame_id` (Rule 11)
 ```
 
 ### Step 4: Severity
@@ -115,10 +124,10 @@ Separate into two groups:
 ## Important
 
 1. **Only scan changed files** — skip everything else
-2. **Read the rules first** — check CLAUDE.md for project-specific conventions to validate against
+2. **Read the rules first** — check CLAUDE.md for project-specific conventions to validate against (Rule 3 boundary, Rule 10 TS naming, Rule 11 C#/C naming)
 3. **Don't auto-fix** — only report findings
 4. **Use file:line references** — so user can jump to each issue
 5. **Skip false positives** — if unsure, mention as "possible" issue
 6. **Early exit** — if no changed files, say so and stop
-7. **Language-aware** — apply naming rules per language (camelCase for TS, PascalCase for C#)
-
+7. **Language-aware** — apply naming rules per language (camelCase for TS, PascalCase for C#, snake_case for C per Rule 11)
+8. **Firmware scope** — changes under `firmware/` (ESP-IDF C) are validated against Rule 11 C column, not TS/C# rules
