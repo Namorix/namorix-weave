@@ -1,0 +1,11 @@
+{
+  "weave": {
+    "title": "Namorix Weave",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "devices": "Devices",
+      "network": "Network",
+      "settings": "Settings"
+    }
+  }
+}
