@@ -29,7 +29,7 @@ const RoleKeys: Record<ThreadRole, string> = {
 const RoleSemantics: Record<ThreadRole, NmxSemanticColor> = {
   disabled: "trace",
   detached: "warning",
-  child: "fatal",
+  child: "debug",
   router: "info",
   leader: "success",
 }

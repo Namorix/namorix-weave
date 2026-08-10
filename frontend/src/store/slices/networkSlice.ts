@@ -58,6 +58,9 @@ const slice = createSlice({
   name: "network",
   initialState,
   reducers: {
+    setConnection(state, action: PayloadAction<BrConnectionStatus>) {
+      state.connection = action.payload
+    },
     setOtbrStatus(state, action: PayloadAction<OtbrStatus>) {
       const { connection, role, ipAddress, threadVersion } = action.payload
       state.connection = connection
