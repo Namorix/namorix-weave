@@ -45,6 +45,7 @@ export default defineConfig((config) => {
       exclude: ["@namorix/core"],
     },
     server: {
+      host: "0.0.0.0",
       port: frontendPort,
       cors: true,
       proxy: {
