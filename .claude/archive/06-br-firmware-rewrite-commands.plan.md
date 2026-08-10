@@ -7,6 +7,21 @@ isProject: false
 
 # BR Firmware Rewrite — Command Handlers
 
+## ✅ Đã triển khai (2026-08-10)
+
+`main/command/command.c` viết xong toàn bộ handler thật (thay stub NACK-not-ready):
+- **Scoped lock helper:** `ot_get_and_lock()` + `ot_lock_or_nack()` (phân biệt instance NULL → NACK 0x02, lock timeout → NACK 0x03).
+- **Dataset mutator:** `dataset_field_t` + `handle_dataset_set()` gộp 5 handler `SET_PANID/CHANNEL/NETWORK_NAME/EXTENDED_PANID/NETWORK_KEY`; `validate_*` kiểm tra giá trị (PANID≠0xFFFF, channel 11–26).
+- **Generic table reader:** `handle_table_read()` reuse serializer `ot_table_snapshot_build_{router,child,joiner}_table`.
+- **Dedup:** `command_factory_reset()` dùng chung boot button + CMD_FACTORY; `thread_graceful_shutdown()` dùng chung THREAD_STOP + pre-reset; task table `k_br_tasks` extern trong `br_config.h` định nghĩa trong `main.c`, cấp cho CMD_BR_HEALTH TLV lẫn stack monitor.
+- **Fix dead code MAC:** factory-assigned EUI-64 là nguồn chính (`otLinkGetFactoryAssignedIeeeEui64` trả void → bỏ nhánh dead); fallback `esp_read_mac(ESP_MAC_IEEE802154)` chỉ khi instance không up.
+- **IP_ADDR:** retry timer (1s, cap 3) đặt trong transport (`frame_tcp.c`); `command_ipaddr_response()` re-send RLOC cache; ACK rỗng cùng frame_id của backend dừng retry.
+- **CMD_FACTORY:** giữ confirm byte `0xAA` và **enforce thật** — `command_handle_factory` NACK invalid-param nếu `data` không đúng `0xAA` (backend `FactoryResetAsync` vẫn gửi `[0xAA]`, spec giữ 1 byte).
+- Reset/factory ACK trước rồi thực thi sau 2s (`esp_timer_start_once`).
+- Các CMD khác: STATE (role byte), DATASET_ACTIVE, BR_HEALTH (16B prefix + TLV), THREAD_START/STOP, THREAD_VERSION, COMMISSIONER_JOINER (poll ACTIVE 1s), SRP_REGISTER (static buffer cho pointer lifetime).
+
+> Chưa build — user tự build. Uncommitted.
+
 ## Quy tắc đặt tên (thống nhất)
 
 Theo **Rule 11** — `namorix-weave/.claude/CLAUDE.md`. Tóm tắt cho C: type `snake_case_t`, hàm `{module}_snake_case`, biến `snake_case`, static `s_` / module `m_`, hằng số `UPPER_SNAKE_CASE`, file `snake_case.c/.h`, include guard `UPPER_SNAKE_H`.
@@ -72,9 +87,9 @@ typedef struct {
 
 ## Checklist
 
-- [ ] Scoped OT lock helper + áp dụng mọi handler
-- [ ] Dataset field descriptor → 1 hàm set_*
-- [ ] Generic table reader reuse serializer
-- [ ] Dedup factory reset / graceful shutdown / task table
-- [ ] Fix dead code MAC, IP_ADDR mutex + retry cap
-- [ ] Chốt CMD_FACTORY confirm byte (spec + backend + firmware đồng bộ)
+- [x] Scoped OT lock helper + áp dụng mọi handler
+- [x] Dataset field descriptor → 1 hàm set_*
+- [x] Generic table reader reuse serializer
+- [x] Dedup factory reset / graceful shutdown / task table
+- [x] Fix dead code MAC, IP_ADDR mutex + retry cap
+- [x] Chốt CMD_FACTORY confirm byte (spec + backend + firmware đồng bộ — giữ `0xAA` + handler validate, NACK 0x04 nếu sai)

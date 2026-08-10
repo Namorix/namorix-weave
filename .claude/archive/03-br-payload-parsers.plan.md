@@ -13,6 +13,7 @@ isProject: false
 - DTO dùng prefix `Br` cho nhất quán codebase (plan ghi `MacAddress` → `BrMacAddress`).
 - Exceptions gom vào folder `BorderRouter/Exceptions/`: `BrNackException.cs` (từ Plan 02) + `BrPayloadException.cs` mới, namespace `Namorix.Weave.BorderRouter.Exceptions`.
 - `BrActiveDataset` giữ `byte[] Raw` + `FindTlv(byte type)` + class `MeshCopTlvType` (chưa parse chi tiết — đúng plan).
+- **Sửa lỗi constants (2026-08-10, phát hiện khi làm Plan 04):** `MeshCopTlvType` ban đầu sai so với OpenThread chuẩn (verified từ `openthread/include/openthread/dataset.h` — `enum otMeshcopTlvType`): `NetworkKey` 0x06→**0x05**, `MeshLocalPrefix` 0x08→**0x07**, `ActiveTimestamp` 0x0b→**0x0e**; thêm `Pskc` 0x04, `SecurityPolicy` 0x0c, `ChannelMask` 0x35. Giá trị cũ `0x06` thật ra là Network Key Sequence, `0x08` là Steering Data. Nếu không sửa, `FindTlv` tìm nhầm type → network key / mesh-local-prefix / active timestamp không hiện trên Dataset panel. Danh sách chuẩn ở mục DATASET_ACTIVE bên dưới.
 - Parser nhận `ReadOnlySpan<byte>` → throw `BrPayloadException` khi thiếu byte (protect chống buffer dịch vụ).
 - Joiner entry đã xác nhận lại từ spec: **variable-length** (`[Type][SharedId][PSKD_len][PSKD][ExpirationTime(4 BE)]`), không phải 14B cố định như plan cũ — parser bước theo Type/SharedId/PSKD_len/PSKD/ExpirationTime.
 - Không unit test (theo yêu cầu người dùng).
@@ -37,7 +38,20 @@ public enum BrRole : byte { Disabled = 0, Detached = 1, Child = 2, Router = 3, L
 
 ### DATASET_ACTIVE — raw Active Dataset TLVs
 - Không parse chi tiết ngay; giữ `byte[] Raw` + helper tìm TLV theo type (`MeshLocalPrefix`, `NetworkName`, `PanId`, `Channel`, ...).
-- Type constants theo OpenThread MeshCop TLV.
+- `MeshCopTlvType` constants — **verified từ OpenThread `dataset.h` (`otMeshcopTlvType`)**:
+
+| Constant | Byte | Giá trị TLV |
+|---|---|---|
+| `Channel` | `0x00` | Page(1) + Channel(2 BE) |
+| `PanId` | `0x01` | 2 BE |
+| `ExtendedPanId` | `0x02` | 8 |
+| `NetworkName` | `0x03` | utf8 |
+| `Pskc` | `0x04` | 16 → base32 |
+| `NetworkKey` | `0x05` | 16 |
+| `MeshLocalPrefix` | `0x07` | 8 → `h:h:h:h::/64` |
+| `SecurityPolicy` | `0x0c` | flags(1) + rotation(1) |
+| `ActiveTimestamp` | `0x0e` | seconds(4 BE, epoch 2000-01-01) + ticks(2) |
+| `ChannelMask` | `0x35` | 4 BE |
 
 ### MAC_ADDRESS — 8 bytes EUI-64
 ```csharp

@@ -77,12 +77,12 @@ cd frontend && pnpm docker:prod   # docker compose down && up --build
 
 `frontend/.env`: `ADDON_FRONTEND_PORT=5100`, `ADDON_BACKEND_PORT=5101`, `ADDON_HOST=http://localhost`. Dev server proxies `/.well-known` to the backend.
 
-## Current Status (v0.2.0)
+## Current Status (v0.3.0)
 
-Scaffold + first real feature (Network monitoring UI).
-- **Backend:** `WeaveService` connects over gRPC and pings Namorix with a `widget-event` (`{"event":"ready"}`); incoming messages are just logged.
-- **Frontend:** `WeaveApp` wraps the shell in a Redux store and defaults to the Network tab. `NetworkView` shows an OTBR/Thread dashboard — `NmxToolbar` sub-tabs (Overview, Dataset, Mesh, Joiner) with connection status, active dataset, and router/child/joiner tables fed by mock data (`otbrController`). Dashboard/Devices/Settings tabs are still placeholders.
-- Real Thread/device monitoring is not implemented yet; `otbrController.startOtbrDataFeed` is the swap point for live SignalR/BR data; port 5100 is the addon's web entry (`addon.json`).
+Scaffold + Network monitoring UI now fed by live Border-Router data over SignalR.
+- **Backend:** `WeaveService` connects over gRPC and pings Namorix with a `widget-event` (`{"event":"ready"}`). The BR integration stack (frame protocol, commands, parsers, `BrConnectionService`) polls the ESP32-S3 border-router over TCP 5000 and pushes live status/dataset/table snapshots to the frontend via SignalR at `/hubs/weave`.
+- **Frontend:** `WeaveApp` wraps the shell in a Redux store and defaults to the Network tab. `NetworkView` shows an OTBR/Thread dashboard — `NmxToolbar` sub-tabs (Overview, Dataset, Mesh, Joiner) with connection status, active dataset, and router/child/joiner tables fed by live `weave:br-*` / `weave:dataset` events through `otbrController.startOtbrDataFeed` (`getSignalrClient(HUB_WEAVE)` from `@namorix/core`). Dashboard/Devices/Settings tabs are still placeholders.
+- Real Thread/device monitoring (multi-device beyond the border-router) is not implemented yet; port 5100 is the addon's web entry (`addon.json`).
 
 ---
 
