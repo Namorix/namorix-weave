@@ -1,4 +1,5 @@
 import React from "react"
+import { Provider } from "react-redux"
 import { useTranslation } from "react-i18next"
 import {
   NmxRail,
@@ -9,6 +10,8 @@ import {
 import type { NmxRailItemData } from "@namorix/ui"
 import "./i18n"
 import { useAddonMode, useIsStandalone } from "@namorix/core"
+import { store } from "./store/store"
+import { NetworkView } from "./views/network/NetworkView"
 
 type WeaveTab = "dashboard" | "devices" | "network" | "settings"
 
@@ -24,25 +27,30 @@ export const WeaveApp: React.FC = () => {
   const isStandalone = useIsStandalone()
 
   return (
-    <NmxRail<WeaveTab> defaultTab="dashboard">
-      <NmxRailList
-        title={t("weave.title")}
-        items={TABS}
-        t={t}
-        showToggle={isStandalone}
-      />
-      <NmxRailContent<WeaveTab> tabKey="dashboard">
-        <h1>DashboardView: {useAddonMode()}</h1>
-      </NmxRailContent>
-      <NmxRailContent<WeaveTab> tabKey="devices">
-        <h1>DevicesView</h1>
-      </NmxRailContent>
-      <NmxRailContent<WeaveTab> tabKey="network">
-        <h1>NetworkView</h1>
-      </NmxRailContent>
-      <NmxRailContent<WeaveTab> tabKey="settings">
-        <h1>SettingsView</h1>
-      </NmxRailContent>
-    </NmxRail>
+    <Provider store={store}>
+      <NmxRail<WeaveTab> defaultTab="network">
+        <NmxRailList
+          title={t("weave.title")}
+          items={TABS}
+          t={t}
+          showToggle={isStandalone}
+        />
+        <NmxRailContent<WeaveTab> tabKey="dashboard">
+          <h1>DashboardView: {useAddonMode()}</h1>
+        </NmxRailContent>
+        <NmxRailContent<WeaveTab> tabKey="devices">
+          <h1>DevicesView</h1>
+        </NmxRailContent>
+        <NmxRailContent<WeaveTab>
+          tabKey="network"
+          spacingVerticalDisabled={true}
+        >
+          <NetworkView />
+        </NmxRailContent>
+        <NmxRailContent<WeaveTab> tabKey="settings">
+          <h1>SettingsView</h1>
+        </NmxRailContent>
+      </NmxRail>
+    </Provider>
   )
 }

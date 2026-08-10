@@ -7,5 +7,86 @@
       "network": "Network",
       "settings": "Settings"
     }
+  },
+  "network": {
+    "tabs": {
+      "overview": "Overview",
+      "dataset": "Dataset",
+      "mesh": "Mesh",
+      "joiner": "Joiner"
+    },
+    "joiner": {
+      "add": "Add joiner"
+    },
+    "status": {
+      "title": "Border Router",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "hostPort": "Host / Port",
+      "status": "Status",
+      "role": "Thread Role",
+      "ipAddress": "IPv6 Address",
+      "threadVersion": "Thread Version",
+      "roleLabel": {
+        "disabled": "Disabled",
+        "detached": "Detached",
+        "child": "Child",
+        "router": "Router",
+        "leader": "Leader"
+      }
+    },
+    "dataset": {
+      "title": "Active Dataset",
+      "networkName": "Network Name",
+      "panId": "PAN ID",
+      "channel": "Channel",
+      "channelMask": "Channel Mask",
+      "extendedPanId": "Extended PAN ID",
+      "meshLocalPrefix": "Mesh-Local Prefix",
+      "networkKey": "Network Key",
+      "showNetworkKey": "Show key",
+      "hideNetworkKey": "Hide key",
+      "pskc": "PSKc",
+      "securityPolicy": "Security Policy",
+      "activeTimestamp": "Active Timestamp",
+      "empty": "No active dataset"
+    },
+    "tables": {
+      "router": {
+        "title": "Router Table",
+        "routerId": "Router ID",
+        "rloc16": "RLOC16",
+        "extAddress": "Extended Address",
+        "lqi": "LQI",
+        "lqo": "LQO",
+        "age": "Age (s)"
+      },
+      "child": {
+        "title": "Child Table",
+        "childId": "Child ID",
+        "rloc16": "RLOC16",
+        "extAddress": "Extended Address",
+        "lqi": "LQI",
+        "avgRssi": "Avg RSSI",
+        "ftd": "FTD",
+        "rxOnWhenIdle": "RxOn",
+        "age": "Age (s)"
+      },
+      "joiner": {
+        "title": "Joiner Table",
+        "type": "Type",
+        "sharedId": "Shared ID",
+        "pskd": "PSKd",
+        "expires": "Expiration",
+        "typeLabel": {
+          "any": "Any",
+          "eui64": "EUI64",
+          "discerner": "Discerner"
+        },
+        "never": "Never",
+        "expiresIn": "in {{seconds}}s"
+      },
+      "empty": "No entries"
+    }
   }
 }
