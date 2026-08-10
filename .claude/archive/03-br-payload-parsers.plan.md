@@ -7,6 +7,16 @@ isProject: false
 
 # BR Payload Parsers — C#
 
+## ✅ Trạng thái: HOÀN THÀNH (2026-08-10)
+
+Đã triển khai `backend/src/BorderRouter/Models/` (DTO) + `backend/src/BorderRouter/Parsers/` (parser). Khác biệt so với thiết kế gốc:
+- DTO dùng prefix `Br` cho nhất quán codebase (plan ghi `MacAddress` → `BrMacAddress`).
+- Exceptions gom vào folder `BorderRouter/Exceptions/`: `BrNackException.cs` (từ Plan 02) + `BrPayloadException.cs` mới, namespace `Namorix.Weave.BorderRouter.Exceptions`.
+- `BrActiveDataset` giữ `byte[] Raw` + `FindTlv(byte type)` + class `MeshCopTlvType` (chưa parse chi tiết — đúng plan).
+- Parser nhận `ReadOnlySpan<byte>` → throw `BrPayloadException` khi thiếu byte (protect chống buffer dịch vụ).
+- Joiner entry đã xác nhận lại từ spec: **variable-length** (`[Type][SharedId][PSKD_len][PSKD][ExpirationTime(4 BE)]`), không phải 14B cố định như plan cũ — parser bước theo Type/SharedId/PSKD_len/PSKD/ExpirationTime.
+- Không unit test (theo yêu cầu người dùng).
+
 ## Quy tắc đặt tên (thống nhất)
 
 Theo **Rule 11** — `namorix-weave/.claude/CLAUDE.md`. Tóm tắt cho C#: type `PascalCase`, method `PascalCase`, biến local/tham số `camelCase`, field private `_camelCase`, hằng số/enum value `PascalCase`, file `PascalCase.cs`, namespace dotted `PascalCase`.
@@ -44,8 +54,32 @@ Suffix TLV: Type `0x01` task_name (utf8), `0x02` high_water_mark (u32 BE), `0x03
 ### CHILD_TABLE — count(1) + 17 bytes/entry
 `ChildId(1) RLOC16(2 BE) ExtAddr(8) LQin(1) AvgRssi(1 signed) FTD(1) RxOnIdle(1) Age(2 BE)`
 
-### JOINER_TABLE — count(1) + entries biến đổi
-Entry: `Eui64(8) PanId(2 BE) Timestamp(4 BE)` → độ dài cố định 14/entry; cần đọc kỹ lại spec để xác nhận layout chính xác trước khi code.
+### JOINER_TABLE — count(1) + entries **variable-length**
+> ✅ Đã xác nhận lại từ `table_data_format.md`: entry KHÔNG cố định 14B (`Eui64(8) PanId(2) Timestamp(4)` là giả định sai trong plan cũ). Layout thật như dưới.
+
+Entry: `[Type(1)] + [SharedId] + [PSKD_length(1)] + [PSKD] + [ExpirationTime(4 BE)]`
+
+- **Type (1 byte):**
+  - `0x00` = `Any` — SharedId = 8 byte padding `0x00`
+  - `0x01` = `Eui64` — SharedId = 8 byte EUI-64
+  - `0x02` = `Discerner` — SharedId = 1 byte length (bits, 1–64) + `ceil(len/8)` byte value (big-endian)
+- **PSKD_length (1 byte) + PSKD** — utf8 string, không null-terminated (0–32)
+- **ExpirationTime (4 byte uint32 BE)** — milliseconds; `0` = không expire
+
+Parser phải **bước từng entry theo header** (đọc Type → nhảy SharedId theo Type → đọc PSKD_len → nhảy PSKD → đọc ExpirationTime), không loop offset cố định như Router/Child.
+
+```csharp
+public enum BrJoinerType : byte { Any = 0, Eui64 = 1, Discerner = 2 }
+
+public readonly record struct BrJoinerDiscerner(int BitLength, byte[] Value);
+
+public sealed record BrJoinerEntry(
+    BrJoinerType Type,
+    byte[]? Eui64,               // Type = Eui64
+    BrJoinerDiscerner? Discerner, // Type = Discerner
+    string Pskd,
+    uint ExpirationTimeMs);      // 0 = không expire
+```
 
 ## Nguyên tắc chung
 
@@ -55,8 +89,8 @@ Entry: `Eui64(8) PanId(2 BE) Timestamp(4 BE)` → độ dài cố định 14/ent
 
 ## Checklist
 
-- [ ] Models + enum BrRole
-- [ ] BrPayloadException
-- [ ] STATE / MAC / BR_HEALTH parser + unit test
-- [ ] Router / Child / Joiner table parser + unit test
-- [ ] Xác nhận lại joiner entry layout từ spec
+- [x] Models + enum BrRole
+- [x] BrPayloadException
+- [x] STATE / MAC / BR_HEALTH parser
+- [x] Router / Child / Joiner table parser
+- [x] Xác nhận lại joiner entry layout từ spec (variable-length, không phải 14B cố định)

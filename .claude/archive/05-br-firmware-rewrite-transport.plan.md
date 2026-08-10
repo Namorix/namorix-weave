@@ -5,6 +5,19 @@ todos: []
 isProject: false
 ---
 
+## ✅ Trạng thái: HOÀN THÀNH (2026-08-10)
+
+Đã triển khai transport + dispatch firmware trong `namorix-weave/firmware/border-router-host/`. Khác biệt so với thiết kế gốc:
+- API đặt tên theo prefix `frame_`/`command_` (Rule 11): `transport_init` → `frame_tcp_init`, `transport_send` → `frame_send(frame_id, cmd, data, len)`, RX loop trong `tcp_rx_task` + parser block-copy `rx_parse_and_dispatch`/`rx_append`.
+- Wire constants + `frame_t` + CRC8 + enum `frame_nack_t` + `frame_cmd_name` gom vào `include/frame/frame.h` (header dùng chung cả firmware, không riêng transport).
+- Handler table: signature thống nhất `int fn(frame_t *f)`; `command_dispatch()` trong `main/command/command.c`. STATE là handler thật duy nhất (ACK + đánh dấu state watchdog); 20 command còn lại NACK 0x02 not-ready (stub chờ Plan 06). CMD lạ → NACK invalid-cmd.
+- Đồng bộ socket: 2 mutex `s_fd_mutex` (single-owner socket) + `s_tx_mutex` (single tx buffer); `frame_send` retry EAGAIN có giới hạn + xử lý partial send.
+- Bỏ queue trung gian: RX parse → dispatch **đồng bộ** trong RX task → không còn clamp 256B âm thầm; frame ≤ 2048 luôn xử lý trọn vẹn.
+- State watchdog (5×15s → `esp_restart`) giữ trong Plan 05 (transport keepalive); IP_ADDR retry để Plan 06.
+- `main/main.c` placeholder (nvs + esp_netif + frame_tcp_init); boot đầy đủ (W5500/RCP/OT/LED/SRP) → Plan 07.
+- `main/CMakeLists.txt` rút gọn: 3 source + `REQUIRES esp_netif nvs_flash lwip`.
+- Chưa build (người dùng tự build); chưa commit.
+
 # BR Firmware Rewrite — Transport & Dispatch Core
 
 ## Mục tiêu
@@ -64,9 +77,9 @@ static const cmd_handler_t k_handlers[] = {
 
 ## Checklist
 
-- [ ] Gộp 3 module → `transport/frame_tcp.c` (init / rx loop / send)
-- [ ] CRC inline + single buffer, bỏ malloc + memmove từng byte
-- [ ] Handler table thay if/else 20 nhánh
-- [ ] Mutex/single-owner cho `s_client_fd`; xử lý send partial/fail
-- [ ] Enum NACK code + header dùng chung
-- [ ] Bỏ clamp payload âm thầm (hoặc fail rõ ràng nếu quá 2048)
+- [x] Gộp 3 module → `transport/frame_tcp.c` (init / rx loop / send)
+- [x] CRC inline + single buffer, bỏ malloc + memmove từng byte
+- [x] Handler table thay if/else 20 nhánh
+- [x] Mutex/single-owner cho `s_client_fd`; xử lý send partial/fail
+- [x] Enum NACK code + header dùng chung
+- [x] Bỏ clamp payload âm thầm (hoặc fail rõ ràng nếu quá 2048)

@@ -7,6 +7,15 @@ isProject: false
 
 # BR Commands — C#
 
+## ✅ Trạng thái: HOÀN THÀNH (2026-08-10)
+
+Đã triển khai `backend/src/BorderRouter/`: `Commands.cs` (enum `BrCommand`), `BrNackException.cs` (enum `BrNackCode` + exception), `BrCommandClient.cs`. Khác biệt so với thiết kế gốc:
+- CMD constants dùng `enum BrCommand : byte` thay cho const riêng lẻ (typed hơn).
+- `BrNackCode` đặt chung file `BrNackException.cs` theo plan.
+- Handshake IP_ADDR: sau khi nhận ACK 16B, gửi ACK rỗng qua `transport.SendFrameAsync` (fire-and-forget, không register pending vì BR không trả lời tiếp).
+- `FactoryResetAsync` giữ confirm byte `0xAA` theo spec hiện tại (mở — plan firmware 06 muốn bỏ nhưng chưa chốt).
+- Timeout request mặc định 3s (`requestTimeout` có thể cấu hình qua constructor).
+
 ## Quy tắc đặt tên (thống nhất)
 
 Theo **Rule 11** — `namorix-weave/.claude/CLAUDE.md`. Tóm tắt cho C#: type `PascalCase`, method `PascalCase`, biến local/tham số `camelCase`, field private `_camelCase`, hằng số/enum value `PascalCase`, file `PascalCase.cs`, namespace dotted `PascalCase`.
@@ -71,7 +80,7 @@ Client→BR:  CMD_ACK rỗng (N)            → BR dừng retry
 
 ## Checklist
 
-- [ ] Commands.cs constants
-- [ ] BrCommandClient.RequestAsync (pending map + NACK throw)
-- [ ] Xử lý riêng IP_ADDR (trả ACK rỗng)
-- [ ] Wrapper method cho từng CMD
+- [x] Commands.cs constants (`enum BrCommand`)
+- [x] BrCommandClient.RequestAsync (NACK → `BrNackException`)
+- [x] Xử lý riêng IP_ADDR (tự trả ACK rỗng)
+- [x] Wrapper method cho từng CMD (19 method)

@@ -7,6 +7,13 @@ isProject: false
 
 # BR Frame Protocol Core — C#
 
+## ✅ Trạng thái: HOÀN THÀNH (2026-08-10)
+
+Đã triển khai toàn bộ `backend/src/BorderRouter/`. Khác biệt so với thiết kế gốc:
+- Type frame đổi `Frame` → `BrFrame` (tránh xung đột namespace `…BorderRouter.Frame`).
+- `TryParse` nhận `ReadOnlySpan<byte>` (1 frame hoàn chỉnh); thêm `TryParseNext(List<byte>, out BrFrame?)` xử lý tích luỹ/resync SOF/partial frame (dùng `CollectionsMarshal.AsSpan`, zero-copy).
+- **Bỏ unit test** theo quyết định của user (chưa có test project trong cả hệ sinh thái).
+
 ## Quy tắc đặt tên (thống nhất)
 
 Theo **Rule 11** — `namorix-weave/.claude/CLAUDE.md`. Tóm tắt cho C#: type `PascalCase`, method `PascalCase`, biến local/tham số `camelCase`, field private `_camelCase`, hằng số/enum value `PascalCase`, file `PascalCase.cs`, namespace dotted `PascalCase`.
@@ -72,7 +79,7 @@ static byte Crc8Maxim(ReadOnlySpan<byte> data)
 
 ## Checklist
 
-- [ ] FrameCodec encode/parse + unit test (vector từ tài liệu §10)
-- [ ] Crc8Maxim + unit test
-- [ ] BrTcpClient connect/send/receive + reconnect
-- [ ] Pending map + timeout + FrameId rotation
+- [x] FrameCodec encode/parse (Encode + TryParse + TryParseNext) — unit test bỏ theo user
+- [x] Crc8Maxim (CRC-8/MAXIM, poly 0x31, init 0x00)
+- [x] BrTcpClient connect/send/receive + reconnect (backoff 1s→30s)
+- [x] Pending map + timeout + FrameId rotation (PendingFrameStore)
