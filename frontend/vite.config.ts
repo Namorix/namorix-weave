@@ -50,6 +50,7 @@ export default defineConfig((config) => {
       cors: true,
       proxy: {
         "/.well-known": backendUrl,
+        "/hubs": backendUrl,
       },
     },
     build: {
