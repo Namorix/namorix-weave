@@ -77,12 +77,12 @@ cd frontend && pnpm docker:prod   # docker compose down && up --build
 
 `frontend/.env`: `ADDON_FRONTEND_PORT=5100`, `ADDON_BACKEND_PORT=5101`, `ADDON_HOST=http://localhost`. Dev server proxies `/.well-known` to the backend.
 
-## Current Status (v0.1.0)
+## Current Status (v0.2.0)
 
-Scaffold only.
+Scaffold + first real feature (Network monitoring UI).
 - **Backend:** `WeaveService` connects over gRPC and pings Namorix with a `widget-event` (`{"event":"ready"}`); incoming messages are just logged.
-- **Frontend:** `WeaveApp` renders an `NmxRail` with 4 placeholder tabs — Dashboard, Devices, Network, Settings.
-- Real Thread/device monitoring is not implemented yet; port 5100 is the addon's web entry (`addon.json`).
+- **Frontend:** `WeaveApp` wraps the shell in a Redux store and defaults to the Network tab. `NetworkView` shows an OTBR/Thread dashboard — `NmxToolbar` sub-tabs (Overview, Dataset, Mesh, Joiner) with connection status, active dataset, and router/child/joiner tables fed by mock data (`otbrController`). Dashboard/Devices/Settings tabs are still placeholders.
+- Real Thread/device monitoring is not implemented yet; `otbrController.startOtbrDataFeed` is the swap point for live SignalR/BR data; port 5100 is the addon's web entry (`addon.json`).
 
 ---
 
