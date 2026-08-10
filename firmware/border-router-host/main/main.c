@@ -1,6 +1,6 @@
 /*
- * app_main (Plan 05): chỉ init nền tảng + frame TCP transport.
- * Boot đầy đủ (W5500 backhaul, RCP SPI, OpenThread, LED, boot button, SRP) → Plan 07.
+ * app_main (Plan 05): only init the platform + frame TCP transport.
+ * Full boot (W5500 backhaul, RCP SPI, OpenThread, LED, boot button, SRP) -> Plan 07.
  */
 
 #include "esp_log.h"

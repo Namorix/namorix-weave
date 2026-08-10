@@ -1,4 +1,4 @@
-# Thread Border Router — components nhúng trong project (không clone ngoài)
+# Thread Border Router — components embedded in the project (no external clone)
 dependencies:
   espressif/mdns: "^1.10.1"
   espressif/esp_ot_cli_extension:

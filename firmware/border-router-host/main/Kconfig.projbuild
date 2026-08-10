@@ -1,42 +1,42 @@
 menu "ESP Thread Border Router"
 
 config LED_STATUS_ENABLE
-    bool "Bật LED trạng thái RGB WS2812 (disabled=đỏ nhấp nháy, detached=xanh dương nhấp nháy, leader=xanh lá tĩnh, router=tím tĩnh, child=xanh dương tĩnh)"
+    bool "Enable WS2812 RGB status LED (disabled=red blink, detached=blue blink, leader=green solid, router=purple solid, child=blue solid)"
     default y
     help
-        LED WS2812/WS2812B addressable RGB LED trên ESP32-S3.
-        ESP32-S3 DevKitC-1: GPIO 48 (onboard LED) hoặc GPIO 5 (external LED).
+        WS2812/WS2812B addressable RGB LED on ESP32-S3.
+        ESP32-S3 DevKitC-1: GPIO 48 (onboard LED) or GPIO 5 (external LED).
 
 config LED_STATUS_GPIO
-    int "GPIO cho LED RGB data (WS2812)"
+    int "GPIO for the RGB LED data line (WS2812)"
     depends on LED_STATUS_ENABLE
     default 48
     range 0 48
     help
-        GPIO pin cho data line của WS2812/WS2812B LED.
-        ESP32-S3 DevKitC-1: GPIO 48 cho onboard LED, GPIO 5 cho external LED.
+        GPIO pin for the WS2812/WS2812B LED data line.
+        ESP32-S3 DevKitC-1: GPIO 48 for the onboard LED, GPIO 5 for an external LED.
 
 config BR_ETH_W5500_ENABLE
-    bool "Bật Ethernet W5500 (backhaul ưu tiên, SPI)"
+    bool "Enable Ethernet W5500 (preferred backhaul, SPI)"
     default y
     select ETH_USE_SPI_ETHERNET
     select ETH_SPI_ETHERNET_W5500
     help
-        BR dùng W5500 qua SPI làm backhaul (chỉ LAN, không Wi-Fi). ESP32-S3 không có EMAC.
+        BR uses W5500 over SPI as backhaul (LAN only, no Wi-Fi). ESP32-S3 has no EMAC.
 
 if BR_ETH_W5500_ENABLE
     config BR_ETH_SPI_HOST
-        int "SPI host cho W5500"
+        int "SPI host for W5500"
         range 0 2
         default 2
         help
-            SPI2 thường dùng để tránh conflict UART RCP (SPI1 có thể dùng cho flash).
+            SPI2 is usually used to avoid UART RCP conflict (SPI1 can be used for flash).
 
     config BR_ETH_SPI_SCLK_GPIO
         int "W5500 SCLK GPIO"
         default 12
         help
-            ESP32-S3: 12 gợi ý cho SPI2.
+            ESP32-S3: 12 is recommended for SPI2.
 
     config BR_ETH_SPI_MOSI_GPIO
         int "W5500 MOSI GPIO"
@@ -60,64 +60,64 @@ if BR_ETH_W5500_ENABLE
         range -1 48
         default 9
         help
-            Chân interrupt W5500. -1 = dùng polling. Mặc định 9 (tránh conflict SPI/CS và RCP).
+            W5500 interrupt pin. -1 = use polling. Default 9 (avoid SPI/CS and RCP conflict).
 
     config BR_ETH_RST_GPIO
-        int "W5500 RST (reset) GPIO (-1 = không dùng)"
+        int "W5500 RST (reset) GPIO (-1 = unused)"
         range -1 48
         default 6
         help
-            Chân reset W5500. -1 = không nối RST (power-on reset). Mặc định 6 (tránh conflict RCP 7/8).
+            W5500 reset pin. -1 = RST not wired (power-on reset). Default 6 (avoid RCP 7/8 conflict).
 
     config BR_ETH_RST_HOLD_MS
         int "W5500 RST hold time (ms)"
         default 200
         range 10 2000
         help
-            Thời gian giữ RST ở mức low trước khi thả. Tăng nếu link/init không ổn định.
+            RST hold time at low level before releasing. Increase if link/init is unstable.
 
     config BR_ETH_RST_RELEASE_MS
         int "W5500 RST release delay (ms)"
         default 1000
         range 10 1000
         help
-            Thời gian đợi sau khi thả RST trước khi init SPI/driver.
+            Delay after releasing RST before initializing SPI/driver.
 
     config BR_ETH_POLLING_MS
-        int "W5500 polling period (ms, khi INT=-1)"
+        int "W5500 polling period (ms, when INT=-1)"
         default 20
         help
-            Chu kỳ poll khi không dùng interrupt; bỏ qua khi dùng INT.
+            Poll period when not using interrupt; ignored when using INT.
 
     config BR_ETH_LINK_TIMEOUT_MS
-        int "Timeout chờ IPv4 (DHCP) trên Ethernet (ms)"
+        int "IPv4 (DHCP) wait timeout on Ethernet (ms)"
         default 25000
         help
-            Chờ có IPv4 (DHCP). Backend cần IPv4 để kết nối BR. IPv6 link-local thường có trước nhưng không đủ; init chỉ thành công khi có DHCP. Nên >= 20s nếu router chậm.
+            Wait for IPv4 (DHCP). Backend needs IPv4 to connect to the BR. IPv6 link-local is usually up earlier but not enough; init only succeeds when DHCP is up. Use >= 20s for slow routers.
 endif
 
 config BR_FRAME_TCP_PORT
-    int "Port TCP cho kênh frame (BR listen)"
+    int "TCP port for the frame channel (BR listen)"
     default 5000
     range 1 65535
     help
-        BR listen trên port này; dashboard kết nối tới BR_IP:port để gửi/nhận frame.
+        BR listens on this port; dashboard connects to BR_IP:port to send/receive frames.
 
 #
-# RCP: giao tiếp BR ↔ RCP chỉ qua SPI. UART dành sau cho flash/update RCP.
+# RCP: BR <-> RCP communication only via SPI. UART reserved for RCP flash/update later.
 #
 config BR_RCP_SPI_HOST
-    int "SPI host cho RCP (1=SPI2, 2=SPI3)"
+    int "RCP SPI host (1=SPI2, 2=SPI3)"
     range 1 2
     default 1
     help
-        Thường dùng SPI1 (1) nếu W5500 dùng SPI2 để tránh conflict.
+        Usually use SPI1 (1) if W5500 uses SPI2 to avoid conflict.
 
 config BR_RCP_SPI_SCLK_GPIO
     int "RCP SPI SCLK GPIO"
     default 4
     help
-        Không trùng W5500 (10,11,12,13) và RCP RST/BOOT (7,8).
+        Must not overlap W5500 (10,11,12,13) or RCP RST/BOOT (7,8).
 
 config BR_RCP_SPI_MOSI_GPIO
     int "RCP SPI MOSI GPIO"
@@ -131,14 +131,14 @@ config BR_RCP_SPI_CS_GPIO
     int "RCP SPI CS GPIO"
     default 3
     help
-        Không trùng W5500 CS (10).
+        Must not overlap W5500 CS (10).
 
 config BR_RCP_SPI_IRQ_GPIO
     int "RCP SPI IRQ (intr) GPIO (-1 = poll)"
     range -1 48
     default 1
     help
-        Chân interrupt từ RCP. Không trùng W5500 INT (9). Nối từ H2 GPIO4 (RCP IRQ).
+        Interrupt pin from RCP. Must not overlap W5500 INT (9). Wired from H2 GPIO4 (RCP IRQ).
 
 config BR_RCP_SPI_CLOCK_MHZ
     int "RCP SPI clock (MHz)"
@@ -146,18 +146,18 @@ config BR_RCP_SPI_CLOCK_MHZ
     default 10
 
 #
-# RCP control pins (RESET/BOOT) — dùng chung cho UART và SPI
+# RCP control pins (RESET/BOOT) — shared for UART and SPI
 #
 config BR_RCP_RESET_GPIO
     int "RCP RESET GPIO"
     default 7
     help
-        Host GPIO nối chân RESET của RCP (ESP32-H2).
+        Host GPIO wired to the RCP RESET pin (ESP32-H2).
 
 config BR_RCP_BOOT_GPIO
     int "RCP BOOT GPIO"
     default 8
     help
-        Host GPIO nối chân BOOT của RCP (download mode).
+        Host GPIO wired to the RCP BOOT pin (download mode).
 
 endmenu

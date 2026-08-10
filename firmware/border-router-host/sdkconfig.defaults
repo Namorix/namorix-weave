@@ -1,5 +1,5 @@
-# Thread Border Router: ESP32-S3 Host + ESP32-H2 RCP qua SPI. Không WiFi/Ethernet.
-# UART dành sau cho flash/update RCP.
+# Thread Border Router: ESP32-S3 Host + ESP32-H2 RCP via SPI. No WiFi/Ethernet.
+# UART reserved for RCP flash/update later.
 
 CONFIG_IDF_TARGET="esp32s3"
 
@@ -16,7 +16,7 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
 CONFIG_PARTITION_TABLE_OFFSET=0x8000
 CONFIG_PARTITION_TABLE_MD5=y
-# Custom header: bật để include br_custom_config.h (SRP server + CLI srp server/srp client)
+# Custom header: enable to include br_custom_config.h (SRP server + CLI srp server/srp client)
 CONFIG_OPENTHREAD_HEADER_CUSTOM=y
 CONFIG_OPENTHREAD_CUSTOM_HEADER_PATH="include"
 CONFIG_OPENTHREAD_CUSTOM_HEADER_FILE_NAME="br_custom_config.h"
@@ -86,11 +86,11 @@ CONFIG_ESP_CONSOLE_UART_NUM=0
 # CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG is not set
 CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
 # CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG is not set
-# USB CDC dùng cho frame only; log/console chỉ ra UART (không output ra USB)
+# USB CDC used for frame only; log/console only to UART (no output to USB)
 
 #
-# RCP: BR ↔ RCP chỉ qua SPI. Pin trong menuconfig (BR_RCP_SPI_*, BR_RCP_RESET_GPIO, BR_RCP_BOOT_GPIO).
-# OpenThread: bật CONFIG_OPENTHREAD_RADIO_SPINEL_SPI trong menu OpenThread.
+# RCP: BR <-> RCP only via SPI. Pins in menuconfig (BR_RCP_SPI_*, BR_RCP_RESET_GPIO, BR_RCP_BOOT_GPIO).
+# OpenThread: enable CONFIG_OPENTHREAD_RADIO_SPINEL_SPI in the OpenThread menu.
 #
 
 #

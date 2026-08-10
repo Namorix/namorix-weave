@@ -12,10 +12,10 @@
 extern "C" {
 #endif
 
-/* Khởi tạo transport: tạo mutex, accept task (listen+accept 1 client), RX task, state watchdog. */
+/* Initialize transport: create mutexes, accept task (listen+accept 1 client), RX task, state watchdog. */
 esp_err_t frame_tcp_init(void);
 
-/* Đánh dấu đã nhận CMD_STATE từ backend (reset miss counter của state watchdog). */
+/* Mark that CMD_STATE was received from the backend (reset the state watchdog miss counter). */
 void frame_tcp_state_mark_received(void);
 
 #ifdef __cplusplus

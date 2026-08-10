@@ -1,7 +1,7 @@
 /*
- * Command dispatch table. Plan 05: mọi command (trừ STATE) trả NACK not-ready
- * vì OpenThread/boot chưa được cài (Plan 07). STATE là keepalive từ backend:
- * ACK + đánh dấu cho state watchdog trong transport.
+ * Command dispatch table. Plan 05: every command (except STATE) returns NACK not-ready
+ * because OpenThread/boot is not set up yet (Plan 07). STATE is the backend keepalive:
+ * ACK + mark for the state watchdog in the transport.
  */
 
 #include <stddef.h>

@@ -1,7 +1,7 @@
 /*
- * Frame protocol: khung frame [SOF][FrameID][CMD][LEN_H][LEN_L][DATA][CRC8][EOF]
- * trên kênh BR ↔ backend (TCP). Wire format theo docs/usb_cdc_frame_structure.md:
- * CRC-8/MAXIM, LEN big-endian, không escape.
+ * Frame protocol: frame [SOF][FrameID][CMD][LEN_H][LEN_L][DATA][CRC8][EOF]
+ * on the BR <-> backend (TCP) channel. Wire format per docs/usb_cdc_frame_structure.md:
+ * CRC-8/MAXIM, LEN big-endian, no escaping.
  */
 
 #ifndef FRAME_H
@@ -52,7 +52,7 @@ extern "C" {
 /* Notify (BR -> backend): change bitmask */
 #define CMD_NOTIFY              0x45
 
-/* NACK codes — dùng chung firmware + backend (xem docs). */
+/* NACK codes — shared by firmware + backend (see docs). */
 typedef enum {
     FRAME_NACK_INVALID_CMD   = 0x01,
     FRAME_NACK_NOT_READY     = 0x02,
@@ -70,8 +70,8 @@ typedef enum {
 #define FRAME_MAX_BUFFER       (FRAME_FIXED_OVERHEAD + FRAME_MAX_DATA_LEN)
 
 /*
- * Frame đã parse. data trỏ vào RX buffer của transport — chỉ hợp lệ trong lúc
- * dispatch (handler phải xử lý đồng bộ, không lưu con trỏ lại).
+ * Parsed frame. data points into the transport RX buffer — valid only during
+ * dispatch (handler must process synchronously, must not keep the pointer).
  */
 typedef struct {
     uint8_t frame_id;
@@ -93,10 +93,10 @@ static inline uint8_t frame_crc8(const uint8_t *data, size_t len)
     return crc;
 }
 
-/* Tên command để log (ví dụ "STATE"); unknown trả về "0x%02x". */
+/* Command name for logging (e.g. "STATE"); unknown returns "0x%02x". */
 const char *frame_cmd_name(uint8_t cmd);
 
-/* Gửi một frame (thêm SOF/CRC8/EOF). data NULL khi len=0. Transport TCP implement. */
+/* Send one frame (adds SOF/CRC8/EOF). data NULL when len=0. Implemented by the TCP transport. */
 esp_err_t frame_send(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len);
 
 #ifdef __cplusplus

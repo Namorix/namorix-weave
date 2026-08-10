@@ -1,8 +1,8 @@
 /*
- * Frame TCP transport: BR listen port (CONFIG_BR_FRAME_TCP_PORT), accept 1 client,
- * RX loop parse frame (block-copy, không memmove từng byte) rồi dispatch tới command
- * table, gửi frame bằng single-buffer (CRC inline, không malloc), state watchdog
- * (không nhận CMD_STATE từ backend trong N interval → esp_restart).
+ * Frame TCP transport: BR listens on port (CONFIG_BR_FRAME_TCP_PORT), accepts 1 client,
+ * RX loop parses frames (block-copy, no per-byte memmove) then dispatches to the command
+ * table, sends frames via single-buffer (inline CRC, no malloc), state watchdog
+ * (no CMD_STATE from backend within N intervals -> esp_restart).
  */
 
 #include <errno.h>
@@ -50,8 +50,8 @@
 
 #define RX_BUF_SIZE FRAME_MAX_BUFFER
 
-static SemaphoreHandle_t s_fd_mutex;   /* bảo vệ s_client_fd */
-static SemaphoreHandle_t s_tx_mutex;   /* bảo vệ s_tx_buf */
+static SemaphoreHandle_t s_fd_mutex;   /* protects s_client_fd */
+static SemaphoreHandle_t s_tx_mutex;   /* protects s_tx_buf */
 static int s_client_fd = -1;
 static int s_listen_fd = -1;
 static volatile bool s_inited = false;
@@ -61,7 +61,7 @@ static uint8_t s_tx_buf[FRAME_MAX_BUFFER];
 static uint8_t s_rx_buf[RX_BUF_SIZE];
 static size_t s_rx_len = 0;
 
-/* ---- socket access (single owner, có mutex) ---- */
+/* ---- socket access (single owner, mutex-guarded) ---- */
 
 static void close_client(void)
 {
@@ -99,7 +99,7 @@ static void set_client(int fd)
     xSemaphoreGive(s_fd_mutex);
 }
 
-/* ---- RX parse (block-copy, resync 1 byte khi SOF/CRC/EOF lỗi) ---- */
+/* ---- RX parse (block-copy, resync 1 byte on SOF/CRC/EOF error) ---- */
 
 static void rx_parse_and_dispatch(void)
 {
@@ -113,7 +113,7 @@ static void rx_parse_and_dispatch(void)
             continue;
         }
         if (s_rx_len < FRAME_FIXED_OVERHEAD) {
-            return; /* chưa đủ header + CRC + EOF tối thiểu */
+            return; /* not enough for minimum header + CRC + EOF */
         }
         uint16_t frame_len = ((uint16_t)s_rx_buf[3] << 8) | s_rx_buf[4];
         if (frame_len > FRAME_MAX_DATA_LEN) {
@@ -124,9 +124,9 @@ static void rx_parse_and_dispatch(void)
         }
         size_t total = FRAME_FIXED_OVERHEAD + frame_len;
         if (s_rx_len < total) {
-            return; /* chưa đủ full frame */
+            return; /* not enough for the full frame */
         }
-        size_t data_offset = FRAME_HEADER_LEN + 1; /* 5: bắt đầu DATA */
+        size_t data_offset = FRAME_HEADER_LEN + 1; /* 5: DATA start */
         uint8_t crc = frame_crc8(&s_rx_buf[1], FRAME_HEADER_LEN + frame_len);
         if (crc != s_rx_buf[data_offset + frame_len] || s_rx_buf[data_offset + frame_len + 1] != FRAME_EOF) {
             ESP_LOGW(TAG, "bad crc/eof len=%u, drop and resync", (unsigned)frame_len);
@@ -245,12 +245,12 @@ static void accept_task(void *pv)
         if (flags >= 0) {
             fcntl(client, F_SETFL, flags | O_NONBLOCK);
         }
-        set_client(client); /* đóng client cũ nếu có */
+        set_client(client); /* close the old client if any */
         ESP_LOGI(TAG, "client connected");
     }
 }
 
-/* ---- frame_send: single-buffer, CRC inline, không malloc ---- */
+/* ---- frame_send: single-buffer, inline CRC, no malloc ---- */
 
 esp_err_t frame_send(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len)
 {
@@ -258,7 +258,7 @@ esp_err_t frame_send(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t 
         return ESP_ERR_INVALID_ARG;
     }
     if (s_tx_mutex == NULL || xSemaphoreTake(s_tx_mutex, pdMS_TO_TICKS(SEND_MUTEX_TIMEOUT_MS)) != pdTRUE) {
-        return ESP_ERR_TIMEOUT; /* socket/buffer đang bận */
+        return ESP_ERR_TIMEOUT; /* socket/buffer busy */
     }
     int fd = current_client_fd();
     if (fd < 0) {
@@ -352,7 +352,7 @@ esp_err_t frame_tcp_init(void)
         return ESP_ERR_NO_MEM;
     }
     while (!s_inited) {
-        vTaskDelay(pdMS_TO_TICKS(20)); /* chờ bind/listen xong */
+        vTaskDelay(pdMS_TO_TICKS(20)); /* wait for bind/listen to finish */
     }
     if (s_listen_fd < 0) {
         return ESP_FAIL;
