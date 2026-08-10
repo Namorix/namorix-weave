@@ -14,6 +14,7 @@ public sealed class BrTcpClient(string host, int port, ILogger<BrTcpClient> logg
     private Task? _runTask;
 
     public event Action<BrFrame>? FrameReceived;
+    public event Action? Connected;
     public event Action? Disconnected;
 
     public bool IsConnected => _client is not null;
@@ -93,6 +94,7 @@ public sealed class BrTcpClient(string host, int port, ILogger<BrTcpClient> logg
         await client.ConnectAsync(host, port, ct);
         _client = client;
         logger.LogInformation("Connected to BR {Host}:{Port}.", host, port);
+        Connected?.Invoke();
 
         var stream = client.GetStream();
         var buffer = new byte[4096];

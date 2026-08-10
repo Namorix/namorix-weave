@@ -11,17 +11,20 @@ isProject: false
 
 Theo **Rule 11** — `namorix-weave/.claude/CLAUDE.md`. Tóm tắt cho C: type `snake_case_t`, hàm `{module}_snake_case`, biến `snake_case`, static `s_` / module `m_`, hằng số `UPPER_SNAKE_CASE`, file `snake_case.c/.h`, include guard `UPPER_SNAKE_H`.
 
-## Tình trạng hiện tại (từ review)
+## Tình trạng hiện tại (sau Plan 07 — cấu trúc file mới)
 
-- 5 handler `set_*` (PANID/channel/name/xpanid/key) **copy-paste ~90%**: validate len → instance → lock → `otDatasetGetActive` → set 1 field + component bit → `otDatasetSetActive` → unlock → ACK/NACK.
-- 3 handler table (router/child/joiner) gần giống nhau; **duplicate serializer** với `ot_table_snapshot.c` (một serializer, hai consumer).
-- ~17 lần lặp `esp_openthread_get_instance() + lock_acquire + send_nack(0x03)`.
-- **Factory reset trùng:** `br_main.c:on_boot_long_press` == `communicate_command.c:do_nvs_erase_and_restart`.
-- **`thread_graceful_shutdown` trùng body** với `handle_thread_stop`.
-- 2 mảng task/stack tách rời (`br_main.c:k_tasks` vs `communicate_command.c:s_br_health_tasks`) + define trong `br_config.h` → **3 nguồn sự thật**.
-- **Bug:** fallback `otLinkGetExtendedAddress` trong `handle_mac_address` là **dead code sau `return`**.
-- **Bất nhất spec/code:** doc nói CMD_FACTORY mang confirm byte `0xAA`; backend gửi, nhưng handler **bỏ qua** `data`.
-- **IP_ADDR:** `s_pending_ip_frame_id` ghi từ 3 context không lock; chỉ giữ 1 request (request thứ 2 ghi đè); retry timer **vô hạn** nếu backend không ACK.
+> Plan 07 đã port firmware sang `firmware/border-router-host` theo Rule 11. `command.c` hiện là **stub toàn bộ**: mọi CMD (trừ `STATE` = keepalive ACK) trả `NACK_NOT_READY`. Plan 06 = viết handler thật.
+
+- **File mới:** `main/command/command.c` (bảng `s_handlers[]` + `command_dispatch`), `main/transport/frame_tcp.c` (state watchdog + `frame_send`), `main/openthread/ot_table_snapshot.c` (serializer tables), `main/openthread/ot_change_detector.c` (push CMD_NOTIFY), `include/br_config.h` (task name/stack/prio tập trung — ✅ đã xong ở Plan 07).
+- 5 handler `set_*` (PANID/channel/name/xpanid/key) cần viết — dùng chung 1 dataset mutator (field descriptor) để tránh copy-paste ~90%.
+- 3 handler table (router/child/joiner) → generic reader dùng chung serializer `ot_table_snapshot.c`.
+- ~18 CMD trong `s_handlers[]` cần `esp_openthread_get_instance() + lock_acquire` — cần scoped lock helper trả false → NACK 0x03 (TIMEOUT).
+- **Factory reset:** boot button (`main/main.c:on_boot_long_press`) viết trực tiếp; CMD_FACTORY còn stub → gom về 1 `do_factory_reset()` dùng chung.
+- **Thread stop/start:** CMD_THREAD_START/STOP còn stub → tránh trùng body giữa graceful shutdown và stop.
+- **BR_HEALTH TLV tasks:** k_tasks đang là static trong `main/main.c` → chuyển 1 bảng duy nhất trong `br_config.h` (name+stack+prio) cấp cho cả task create lẫn TLV 0x01/0x02/0x03.
+- **Bug cũ (từ reference, chưa có ở stub mới):** fallback `otLinkGetExtendedAddress` sau `return` trong MAC là dead code — viết mới đừng tái phạm.
+- **Bất nhất spec/code:** doc nói CMD_FACTORY mang confirm byte `0xAA`; backend gửi, nhưng handler bỏ qua `data` → chốt lại (ưu tiên **bỏ confirm byte**: frame đã có CRC + FrameID).
+- **IP_ADDR handshake 3 bước:** request → ACK + 16B RLOC + timer 1s → client ACK rỗng để dừng retry; cap retry thay vì vô hạn.
 
 ## Thiết kế mục tiêu
 
@@ -52,7 +55,7 @@ typedef struct {
 ### 4. Dedup
 - **Factory reset:** 1 hàm `do_factory_reset()` dùng cho cả boot button (long press) và CMD_FACTORY.
 - **Graceful shutdown:** 1 hàm dùng chung cho CMD_THREAD_STOP và shutdown trước reset.
-- **Task/stack:** 1 mảng duy nhất trong `br_config.h` (name + stack + prio) cấp cho cả task create lẫn CMD_BR_HEALTH TLV.
+- **Task/stack:** `br_config.h` đã có define name/stack/prio (Plan 07). Còn lại: đưa mảng `k_tasks` (name+stack+prio) vào `br_config.h` — dùng chung cho task create (`main/main.c`) lẫn CMD_BR_HEALTH TLV.
 
 ### 5. Fix cụ thể
 - `handle_mac_address`: bỏ dead code; dọn lại chuỗi fallback (factory EUI64 → extended → `esp_read_mac`).

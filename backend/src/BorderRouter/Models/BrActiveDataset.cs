@@ -6,9 +6,12 @@ public static class MeshCopTlvType
     public const byte PanId = 0x01;
     public const byte ExtendedPanId = 0x02;
     public const byte NetworkName = 0x03;
-    public const byte NetworkKey = 0x06;
-    public const byte MeshLocalPrefix = 0x08;
-    public const byte ActiveTimestamp = 0x0b;
+    public const byte Pskc = 0x04;
+    public const byte NetworkKey = 0x05;
+    public const byte MeshLocalPrefix = 0x07;
+    public const byte SecurityPolicy = 0x0c;
+    public const byte ActiveTimestamp = 0x0e;
+    public const byte ChannelMask = 0x35;
 }
 
 public sealed record BrActiveDataset(byte[] Raw)

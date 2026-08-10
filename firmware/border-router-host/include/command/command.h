@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 /* Synchronous handler: returns 0 if a response was sent, non-zero on error. */
-typedef int (*command_handler_t)(frame_t *frame);
+typedef int (*command_handler_t)(const frame_t *frame);
 
 typedef struct {
     uint8_t cmd;

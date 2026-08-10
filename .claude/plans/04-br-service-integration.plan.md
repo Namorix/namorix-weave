@@ -13,8 +13,9 @@ Theo **Rule 11** — `namorix-weave/.claude/CLAUDE.md`. Tóm tắt cho C#: type 
 
 ## Nguồn spec
 
-- `firmware/br-host/main/communicate/communicate_task.c` (state watchdog 5×15s → restart)
-- `firmware/br-host/main/communicate/communicate_command.c` (CMD_NOTIFY → changed_mask)
+- `firmware/border-router-host/main/transport/frame_tcp.c` (state watchdog 5×15s → restart)
+- `firmware/border-router-host/main/openthread/ot_change_detector.c` (push CMD_NOTIFY → changed_mask)
+- `firmware/border-router-host/main/command/command.c` (bảng CMD, payload từng handler — theo Plan 06)
 
 ## Cấu hình (appsettings.json)
 

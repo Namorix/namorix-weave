@@ -18,6 +18,14 @@ esp_err_t frame_tcp_init(void);
 /* Mark that CMD_STATE was received from the backend (reset the state watchdog miss counter). */
 void frame_tcp_state_mark_received(void);
 
+/*
+ * Mark that an IP_ADDR response was just sent for frame_id: arm the ACK confirm
+ * timer. If the backend does not ACK within IP_RETRY_INTERVAL_MS, the response is
+ * re-sent (via command_ipaddr_response) up to IP_RETRY_MAX times, then dropped.
+ * Called by the CMD_IP_ADDR handler after it sends the ACK + RLOC payload.
+ */
+void frame_tcp_mark_ip_response_pending(uint8_t frame_id);
+
 #ifdef __cplusplus
 }
 #endif
