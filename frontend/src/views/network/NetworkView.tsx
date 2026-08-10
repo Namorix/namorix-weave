@@ -1,11 +1,9 @@
 import React from "react"
 import { useTranslation } from "react-i18next"
 import {
-  NmxButton,
   NmxIconFontSymbol,
   NmxInlineAlert,
   NmxToolbar,
-  NmxToolbarActions,
   NmxToolbarContent,
   NmxToolbarHeader,
   NmxToolbarList,
