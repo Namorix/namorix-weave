@@ -12,6 +12,7 @@
 
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -21,8 +22,9 @@
 #include "sdkconfig.h"
 
 #include "frame/frame.h"
-#include "frame_tcp.h"
-#include "command.h"
+#include "../../include/transport/frame_tcp.h"
+#include "../../include/command/command.h"
+#include "../../include/br_config.h"
 
 #define TAG "frame_tcp"
 
@@ -38,15 +40,10 @@
 #define STATE_WATCHDOG_INTERVAL_MS (15 * 1000)
 #define STATE_WATCHDOG_MAX_MISS    5
 
-#define TASK_NAME_TCP_ACCEPT "tcp_accept"
-#define TASK_NAME_TCP_RX     "tcp_rx"
-#define TASK_NAME_STATE_WD   "state_wd"
-#define TASK_STACK_TCP_ACCEPT 4096
-#define TASK_STACK_TCP_RX     4096
-#define TASK_STACK_STATE_WD   3072
-#define TASK_PRIO_ACCEPT      4
-#define TASK_PRIO_RX          5
-#define TASK_PRIO_STATE_WD    3
+/* CMD_IP_ADDR confirm: backend must ACK the ACK+RLOC within this many retries. */
+#define IP_RETRY_INTERVAL_MS 1000
+#define IP_RETRY_MAX         3
+#define IP_PENDING_NONE      0xFF   /* s_pending_ip_frame_id sentinel */
 
 #define RX_BUF_SIZE FRAME_MAX_BUFFER
 
@@ -60,6 +57,10 @@ static volatile bool s_state_received = false;
 static uint8_t s_tx_buf[FRAME_MAX_BUFFER];
 static uint8_t s_rx_buf[RX_BUF_SIZE];
 static size_t s_rx_len = 0;
+
+static esp_timer_handle_t s_ip_retry_timer = NULL;
+static volatile uint8_t s_pending_ip_frame_id = IP_PENDING_NONE;
+static volatile uint8_t s_ip_retry_count = 0;
 
 /* ---- socket access (single owner, mutex-guarded) ---- */
 
@@ -142,7 +143,13 @@ static void rx_parse_and_dispatch(void)
         };
         ESP_LOGD(TAG, "rx frame_id=%u cmd=%s len=%u",
                  (unsigned)f.frame_id, frame_cmd_name(f.cmd), (unsigned)f.len);
-        (void)command_dispatch(&f);
+        if (f.cmd == CMD_ACK && f.len == 0 && f.frame_id == s_pending_ip_frame_id) {
+            ESP_LOGD(TAG, "ip_addr handshake confirmed by backend");
+            esp_timer_stop(s_ip_retry_timer);
+            s_pending_ip_frame_id = IP_PENDING_NONE;
+        } else {
+            (void)command_dispatch(&f);
+        }
         size_t remain = s_rx_len - total;
         memmove(s_rx_buf, s_rx_buf + total, remain);
         s_rx_len = remain;
@@ -324,9 +331,39 @@ static void state_watchdog_task(void *pv)
             s_state_received = false;
             miss = 0;
         } else if (++miss >= STATE_WATCHDOG_MAX_MISS) {
-            ESP_LOGW(TAG, "no state from backend in %u intervals, restarting", (unsigned)miss);
+            ESP_LOGW(TAG, "no state from server in %u intervals, restarting", (unsigned)miss);
             esp_restart();
         }
+    }
+}
+
+/* ---- CMD_IP_ADDR confirm retry ---- */
+
+static void ip_retry_timer_cb(void *arg)
+{
+    (void)arg;
+    uint8_t frame_id = s_pending_ip_frame_id;
+    if (frame_id == IP_PENDING_NONE) {
+        return;
+    }
+    if (s_ip_retry_count >= IP_RETRY_MAX) {
+        ESP_LOGW(TAG, "ip_addr handshake not confirmed after %u retries, drop", (unsigned)s_ip_retry_count);
+        esp_timer_stop(s_ip_retry_timer);
+        s_pending_ip_frame_id = IP_PENDING_NONE;
+        return;
+    }
+    s_ip_retry_count++;
+    ESP_LOGD(TAG, "ip_addr retry %u, resend frame_id=%u", (unsigned)s_ip_retry_count, (unsigned)frame_id);
+    (void)command_ipaddr_response(frame_id);
+}
+
+void frame_tcp_mark_ip_response_pending(uint8_t frame_id)
+{
+    s_pending_ip_frame_id = frame_id;
+    s_ip_retry_count = 0;
+    if (s_ip_retry_timer != NULL) {
+        esp_timer_stop(s_ip_retry_timer);
+        esp_timer_start_periodic(s_ip_retry_timer, IP_RETRY_INTERVAL_MS * 1000);
     }
 }
 
@@ -346,9 +383,19 @@ esp_err_t frame_tcp_init(void)
     s_listen_fd = -1;
     s_rx_len = 0;
     s_state_received = false;
+    s_pending_ip_frame_id = IP_PENDING_NONE;
+    s_ip_retry_count = 0;
+
+    esp_timer_create_args_t ip_timer_args = {
+        .callback = ip_retry_timer_cb,
+        .name = "ip_retry",
+    };
+    if (esp_timer_create(&ip_timer_args, &s_ip_retry_timer) != ESP_OK) {
+        return ESP_ERR_NO_MEM;
+    }
 
     if (xTaskCreate(accept_task, TASK_NAME_TCP_ACCEPT, TASK_STACK_TCP_ACCEPT, NULL,
-                    TASK_PRIO_ACCEPT, NULL) != pdPASS) {
+                    TASK_PRIO_TCP_ACCEPT, NULL) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
     while (!s_inited) {
@@ -358,7 +405,7 @@ esp_err_t frame_tcp_init(void)
         return ESP_FAIL;
     }
     if (xTaskCreate(tcp_rx_task, TASK_NAME_TCP_RX, TASK_STACK_TCP_RX, NULL,
-                    TASK_PRIO_RX, NULL) != pdPASS) {
+                    TASK_PRIO_TCP_RX, NULL) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
     if (xTaskCreate(state_watchdog_task, TASK_NAME_STATE_WD, TASK_STACK_STATE_WD, NULL,

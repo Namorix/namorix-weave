@@ -1,7 +1,6 @@
 /*
  * Command dispatch: handler table for every CMD (STATE, DATASET_ACTIVE, IP_ADDR,
  * SET_*, TABLE, THREAD_*, RESET, FACTORY, COMMISSIONER_JOINER, SRP_REGISTER).
- * Plan 05: handlers are NACK not-ready stubs; Plan 06 replaces them with real implementations.
  */
 
 #ifndef COMMAND_H
@@ -30,6 +29,18 @@ typedef struct {
  * invalid-cmd. Called synchronously in the RX task (frame.data is valid only during the call).
  */
 esp_err_t command_dispatch(const frame_t *frame);
+
+/*
+ * Raw factory reset: erase the NVS partition then restart. Does not stop the
+ * Thread stack first. Shared by the boot button and CMD_FACTORY.
+ */
+void command_factory_reset(void);
+
+/*
+ * Re-send the cached CMD_IP_ADDR response (leader RLOC). Called by the transport
+ * ACK retry timer when the backend did not confirm the handshake.
+ */
+int command_ipaddr_response(uint8_t frame_id);
 
 #ifdef __cplusplus
 }
