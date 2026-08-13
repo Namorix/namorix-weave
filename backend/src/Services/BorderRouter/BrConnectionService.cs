@@ -10,19 +10,19 @@ using Namorix.Weave.BorderRouter.Parsers;
 using Namorix.Weave.Constants;
 using Namorix.Weave.Hubs;
 
-namespace Namorix.Weave.Services;
+namespace Namorix.Weave.Services.BorderRouter;
 
 public sealed class BrConnectionService(
     BrTcpClient transport,
     BrCommandClient client,
     IHubContext<BrHub> hub,
-    IOptions<BorderRouterOptions> options,
+    IOptions<BrOptions> options,
     ILogger<BrConnectionService> logger)
     : BackgroundService
 {
     private const int HealthEveryPolls = 3;
 
-    private readonly BorderRouterOptions _options = options.Value;
+    private readonly BrOptions _options = options.Value;
 
     private readonly SemaphoreSlim _notifyGate = new(1, 1);
 

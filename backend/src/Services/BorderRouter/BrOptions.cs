@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Namorix.Weave.Services;
+namespace Namorix.Weave.Services.BorderRouter;
 
-public sealed class BorderRouterOptions
+public sealed class BrOptions
 {
     public const string SectionName = "BorderRouter";
 
