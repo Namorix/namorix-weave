@@ -3,7 +3,8 @@ name: scan-project-docs
 description: |
   Scan namorix-weave documentation selectively based on the task at hand. Reads
   CLAUDE.md first to understand rules and doc structure, then selectively reads only
-  the relevant .claude/memory/ files and .claude/plans/. Avoids reading everything —
+  the relevant .claude/memory/ files, .claude/plans/ (active), and .claude/archive/
+  (completed plans). Avoids reading everything —
   focuses on what matters.
 ---
 
@@ -34,8 +35,8 @@ If neither exists → skip to Step 3 with no rules context, note the gap in the 
 | Frontend/React work | CLAUDE.md Rule 1 (TS config), Rule 4 (Imports), Rule 5 (React), Rule 6 (UI Primitives), Rule 10 (Naming) |
 | Backend/API work | CLAUDE.md Rule 3 (Package Boundary), Rule 7 (Error Handling), Rule 11 (C# naming) |
 | Full-stack feature | CLAUDE.md Rule 3, Rule 5, Rule 7 + `.claude/memory/systemPatterns.md` |
-| Firmware/ESP-IDF work | CLAUDE.md Rule 11 (C naming) + `.claude/plans/05-07-br-firmware-rewrite*.plan.md` |
-| New feature | `.claude/memory/progress.md` (current version), `.claude/memory/activeContext.md` (current focus), `.claude/plans/` (matching plan) |
+| Firmware/ESP-IDF work | CLAUDE.md Rule 11 (C naming) + `.claude/archive/05-07-br-firmware-rewrite*.plan.md` |
+| New feature | `.claude/memory/progress.md` (current version), `.claude/memory/activeContext.md` (current focus), `.claude/archive/` (completed plan for the feature) |
 | Bug fix | CLAUDE.md Rule 7 (Error Handling), `.claude/memory/progress.md` (known issues) |
 | Git/commit | CLAUDE.md Rule 8 (Git Conventions) |
 | New file/component | CLAUDE.md Rule 9 (File Structure), Rule 10 (Naming) |
@@ -58,7 +59,7 @@ Output a concise summary:
 ## Relevant Context
 - Current version: <from progress.md if read, else "unknown">
 - Active work: <from activeContext.md>
-- Active plan: <from .claude/plans/ if read, else "none">
+- Active plan: <from .claude/plans/ or .claude/archive/ if read, else "none">
 
 ## Rules Applied
 - CLAUDE.md Rule N: <key rule summary>
@@ -78,7 +79,7 @@ Output a concise summary:
 - **Always read activeContext.md** — know current state before any task
 - **Skip LICENSE** — per CLAUDE.md Meta Rules
 - **Skip unchanged scopes** — only read files in scope (frontend/backend/firmware/addon/docker)
-- **Plans are living docs** — if a `.claude/plans/*.plan.md` matches the active milestone, read it for the implementation checklist
+- **Plans are living docs** — if a `.claude/plans/*.plan.md` (active) or `.claude/archive/*.plan.md` (completed) matches the task, read it for the implementation checklist
 - **Use git status** to check what files were recently changed before reading
 - **Fallback gracefully** — if key files missing, note the gap and continue
 - **Full-stack tasks read both sides** — frontend + backend rules apply together
