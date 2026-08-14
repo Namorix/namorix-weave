@@ -10,8 +10,7 @@ services:
         - namorix=../../namorix
     image: namorix/${ADDON_ID}:${IMAGE_TAG:-prod}
     container_name: ${ADDON_ID}
-    ports:
-      - "${ADDON_FRONTEND_PORT}:${ADDON_FRONTEND_PORT}"
+    network_mode: host
     labels:
       - "namorix-addon=true"
       - "namorix-addon-id=${ADDON_ID}"
