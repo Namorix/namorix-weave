@@ -2,6 +2,8 @@ using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
 using Namorix.Weave.BorderRouter.Models;
+using Namorix.Weave.Dtos;
+using Namorix.Weave.Models;
 
 namespace Namorix.Weave.BorderRouter.Dtos;
 
@@ -22,6 +24,19 @@ public static class BrDtoMapper
 
     public static BrStateDto ToState(BrRole role, string? ipAddress, string? threadVersion, BrConnectionDto connection) =>
         new(connection, RoleToString(role), ipAddress, threadVersion);
+
+    public static NetworkDto ToNetwork(Network network) =>
+        new(
+            network.Id,
+            network.Protocol.ToString(),
+            network.Name,
+            network.Host,
+            network.Status.ToString(),
+            network.Eui64,
+            network.PublicKey,
+            network.FirstSeenAt,
+            network.AcceptedAt,
+            network.RejectedAt);
 
     public static BrDatasetDto ToDataset(BrActiveDataset dataset) =>
         new(

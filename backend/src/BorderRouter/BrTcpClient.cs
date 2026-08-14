@@ -17,6 +17,9 @@ public sealed class BrTcpClient(string host, int port, ILogger<BrTcpClient> logg
     public event Action? Connected;
     public event Action? Disconnected;
 
+    public string Host => host;
+    public int Port => port;
+
     public bool IsConnected => _client is not null;
 
     public void Start(CancellationToken ct)

@@ -14,6 +14,7 @@ public static class WeaveSignalRGroups
 public static class WeaveSignalREvents
 {
     public const string BrConnection = $"{WeaveSignalRGroups.BorderRouter}:connection";
+    public const string NetworkList = $"{WeaveSignalRGroups.BorderRouter}:network-list";
     public const string BrState = $"{WeaveSignalRGroups.BorderRouter}:state";
     public const string BrHealth = $"{WeaveSignalRGroups.BorderRouter}:health";
     public const string BrDataset = $"{WeaveSignalRGroups.BorderRouter}:dataset";

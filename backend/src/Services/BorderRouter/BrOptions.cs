@@ -6,11 +6,11 @@ public sealed class BrOptions
 {
     public const string SectionName = "BorderRouter";
 
-    [Required]
-    public string Host { get; set; } = "192.168.1.10";
+    public string MdnsServiceName { get; set; } = "_thread-border-router-frame._tcp";
 
+    // Fallback port when the mDNS SRV record is missing its port.
     [Range(1, 65535)]
-    public int Port { get; set; } = 5000;
+    public int FramePort { get; set; } = 5150;
 
     // Must stay well under the firmware state watchdog (5×15s restart).
     [Range(1, 60)]
