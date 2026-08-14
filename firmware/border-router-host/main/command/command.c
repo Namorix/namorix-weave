@@ -30,7 +30,7 @@
 #include "br_config.h"
 #include "command/command.h"
 #include "frame/frame.h"
-#include "../../include/transport/frame_tcp.h"
+#include "transport/frame_tcp.h"
 #include "openthread/device_role.h"
 #include "openthread/ot_table_snapshot.h"
 
@@ -55,8 +55,6 @@
 #define BR_HEALTH_TLV_HIGH_WATER  0x02
 #define BR_HEALTH_TLV_STACK_SIZE  0x03
 
-/* ---- shared send helpers ---- */
-
 static int send_ack(const frame_t *frame, const uint8_t *data, size_t len)
 {
     return (frame_send(frame->frame_id, CMD_ACK, data, len) == ESP_OK) ? 0 : -1;
@@ -67,10 +65,6 @@ static void send_nack(const frame_t *frame, uint8_t code)
     (void)frame_send(frame->frame_id, CMD_NACK, &code, 1);
 }
 
-/* ---- scoped OT lock helper ----
- * Every OT API from a task must be inside the OpenThread lock. `out` is set to
- * NULL when the instance is not up (NACK not-ready) or when the lock times out
- * (NACK timeout) — the caller keeps that distinction. */
 static bool ot_get_and_lock(otInstance **out)
 {
     *out = esp_openthread_get_instance();
@@ -87,8 +81,6 @@ static bool ot_lock_or_nack(const frame_t *frame, otInstance **out)
     }
     return true;
 }
-
-/* ---- deferred reset / factory-reset (timer-based) ---- */
 
 static esp_timer_handle_t s_reset_timer   = NULL;
 static esp_timer_handle_t s_factory_timer = NULL;
@@ -162,8 +154,6 @@ static esp_err_t start_deferred_timer(esp_timer_handle_t *handle, esp_timer_cb_t
     return esp_timer_start_once(*handle, CMD_EXEC_DELAY_US);
 }
 
-/* ---- role mapping for CMD_STATE ---- */
-
 static uint8_t role_to_byte(otDeviceRole role)
 {
     switch (role) {
@@ -208,8 +198,6 @@ static int command_handle_dataset_active(const frame_t *frame)
 
     return send_ack(frame, tlvs.mTlvs, (size_t)tlvs.mLength);
 }
-
-/* ---- CMD_IP_ADDR: cached leader RLOC + ACK handshake (retry in transport) ---- */
 
 static uint8_t s_cached_leader_rloc[LEADER_RLOC_LEN];
 static bool   s_cached_leader_rloc_valid = false;
@@ -282,8 +270,6 @@ static int command_handle_mac_address(const frame_t *frame)
     return send_ack(frame, mac, sizeof(mac));
 }
 
-/* ---- CMD_BR_HEALTH: 16-byte prefix + per-task TLV suffix ---- */
-
 static size_t tlv_put(uint8_t *buf, size_t cap, size_t *off, uint8_t type, const void *val, size_t len)
 {
     if (len > 255 || *off + 2 + len > cap)
@@ -353,8 +339,6 @@ static int command_handle_br_health(const frame_t *frame)
     return send_ack(frame, payload, BR_HEALTH_PREFIX_SIZE + off);
 }
 
-/* ---- generic table reader (router/child/joiner) ---- */
-
 typedef bool (*table_builder_t)(otInstance *instance, uint8_t *buf, size_t buf_size, size_t *out_len);
 
 static int handle_table_read(const frame_t *frame, table_builder_t builder)
@@ -390,8 +374,6 @@ static int command_handle_joiner_table(const frame_t *frame)
 {
     return handle_table_read(frame, ot_table_snapshot_build_joiner_table);
 }
-
-/* ---- dataset field mutator (one implementation for all 5 SET_*) ---- */
 
 typedef struct {
     uint8_t min_len;
@@ -515,8 +497,6 @@ static int command_handle_set_network_key(const frame_t *frame)
     return handle_dataset_set(frame, &FIELD_NETWORK_KEY);
 }
 
-/* ---- thread start / stop (stop shares graceful shutdown with reset) ---- */
-
 static int command_handle_thread_start(const frame_t *frame)
 {
     otInstance *i;
@@ -542,8 +522,6 @@ static int command_handle_thread_stop(const frame_t *frame)
 
     return send_ack(frame, NULL, 0);
 }
-
-/* ---- reset / factory (ACK first, deferred execution) ---- */
 
 static int command_handle_reset(const frame_t *frame)
 {
@@ -690,8 +668,6 @@ static int command_handle_commissioner_joiner(const frame_t *frame)
     return send_ack(frame, NULL, 0);
 }
 
-/* ---- CMD_SRP_REGISTER ---- */
-
 static otSrpClientService s_srp_dashboard_service;
 static bool   s_srp_dashboard_service_inited = false;
 /* OT SRP client stores hostname/address pointers (no copy) — static buffers to avoid dangling. */
@@ -789,8 +765,6 @@ static int command_handle_srp_register(const frame_t *frame)
     ESP_LOGI(TAG, "SRP register OK: _dashboard._udp -> %s port %u", hostname, (unsigned)port);
     return send_ack(frame, NULL, 0);
 }
-
-/* ---- dispatch table ---- */
 
 static const command_handler_entry_t s_handlers[] = {
     { CMD_STATE, command_handle_state },

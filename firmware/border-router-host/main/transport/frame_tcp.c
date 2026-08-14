@@ -62,7 +62,6 @@ static esp_timer_handle_t s_ip_retry_timer = NULL;
 static volatile uint8_t s_pending_ip_frame_id = IP_PENDING_NONE;
 static volatile uint8_t s_ip_retry_count = 0;
 
-/* ---- socket access (single owner, mutex-guarded) ---- */
 
 static void close_client(void)
 {
@@ -100,7 +99,6 @@ static void set_client(int fd)
     xSemaphoreGive(s_fd_mutex);
 }
 
-/* ---- RX parse (block-copy, resync 1 byte on SOF/CRC/EOF error) ---- */
 
 static void rx_parse_and_dispatch(void)
 {
@@ -173,7 +171,6 @@ static void rx_append(const uint8_t *data, size_t len)
     }
 }
 
-/* ---- RX task ---- */
 
 static void tcp_rx_task(void *pv)
 {
@@ -199,7 +196,6 @@ static void tcp_rx_task(void *pv)
     }
 }
 
-/* ---- accept task ---- */
 
 static void accept_task(void *pv)
 {
@@ -257,7 +253,6 @@ static void accept_task(void *pv)
     }
 }
 
-/* ---- frame_send: single-buffer, inline CRC, no malloc ---- */
 
 esp_err_t frame_send(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t len)
 {
@@ -314,7 +309,6 @@ esp_err_t frame_send(uint8_t frame_id, uint8_t cmd, const uint8_t *data, size_t 
     return ESP_OK;
 }
 
-/* ---- state watchdog ---- */
 
 void frame_tcp_state_mark_received(void)
 {
@@ -337,7 +331,6 @@ static void state_watchdog_task(void *pv)
     }
 }
 
-/* ---- CMD_IP_ADDR confirm retry ---- */
 
 static void ip_retry_timer_cb(void *arg)
 {
@@ -367,7 +360,6 @@ void frame_tcp_mark_ip_response_pending(uint8_t frame_id)
     }
 }
 
-/* ---- init ---- */
 
 esp_err_t frame_tcp_init(void)
 {
@@ -416,7 +408,6 @@ esp_err_t frame_tcp_init(void)
     return ESP_OK;
 }
 
-/* ---- frame_cmd_name ---- */
 
 const char *frame_cmd_name(uint8_t cmd)
 {

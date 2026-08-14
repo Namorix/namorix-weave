@@ -98,7 +98,7 @@ endif
 
 config BR_FRAME_TCP_PORT
     int "TCP port for the frame channel (BR listen)"
-    default 5000
+    default 5150
     range 1 65535
     help
         BR listens on this port; dashboard connects to BR_IP:port to send/receive frames.

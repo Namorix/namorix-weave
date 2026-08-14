@@ -137,9 +137,9 @@ void app_main(void)
     }
 
     ESP_ERROR_CHECK(mdns_init());
-    ESP_ERROR_CHECK(mdns_hostname_set("Border-Router-Host"));
+    ESP_ERROR_CHECK(mdns_hostname_set("border-router-host"));
     /* Advertise the frame port over mDNS so the backend can discover BR_IP:port. */
-    ESP_ERROR_CHECK(mdns_service_add(NULL, "_thread-frame", "_tcp", CONFIG_BR_FRAME_TCP_PORT, NULL, 0));
+    ESP_ERROR_CHECK(mdns_service_add(NULL, "_thread-border-router-frame", "_tcp", CONFIG_BR_FRAME_TCP_PORT, NULL, 0));
 
     /* RCP control pins (RESET/BOOT): reset the RCP for a clean state. */
     ESP_ERROR_CHECK(rcp_ctrl_init());
