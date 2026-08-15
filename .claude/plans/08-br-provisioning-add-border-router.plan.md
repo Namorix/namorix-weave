@@ -151,7 +151,7 @@ using (var scope = app.Services.CreateScope())
 
 ## Batch 3 — UI "Add border router" (frontend)
 
-> **Đã xong (mục 1–4, 2026-08-15):** types + SignalR constants + store devices + hook. Còn lại: mục 5 hub invoke, 6 `BrProvisionPanel`, 7 wire tab, 8 i18n, 9 version bump 0.3.0 → 0.4.0.
+> **✅ XONG toàn bộ (2026-08-15, v0.5.0).** Mục 1–4: types + SignalR constants + store devices + hook. Mục 5–8: **Accept/Reject chuyển sang REST** (thay hub invoke, theo convention namorix) — backend `Controllers/NetworkController.cs` (`POST /api/networks/{id}/accept|reject`, `[RequireAuth]`, `ApiResponse<NetworkDto>`) + frontend `controllers/network.controller.ts` (`coreConfig.http`; `signalr/provisioning.ts` đã xoá); `BrProvisionPanel` (`NmxGrid` cards + Accept/Reject dialog); wire `NetworkView` list + `ThreadNetworkView` detail; i18n `en.json`. Mục 9: version bump **0.4.2 → 0.5.0**.
 
 - **`frontend/src/types/network.ts`** ✅ — mirror DTO:
 ```ts
@@ -239,8 +239,8 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 | `store/slices/networkSlice.ts` | + `devices` table + `setNetworkList`/`upsertNetwork` | ✅ B3 mục 3 |
 | `store/selectors/networkSelectors.ts` | `selectNetworks` + `selectNetworkCountByStatus` | ✅ B3 mục 3 |
 | `hooks/useNetworks.ts` | mới — SignalR feed | ✅ B3 mục 4 |
-| `views/network/NetworkView.tsx` | + section/tab Add border router | ⏳ B3 còn lại |
-| `views/network/BrProvisionPanel.tsx` | mới — bảng devices + Accept/Reject dialog | ⏳ B3 còn lại |
+| `views/network/NetworkView.tsx` | list + detail: `BrProvisionPanel` (list) ↔ `ThreadNetworkView` (detail, `onBack`) | ✅ B3 |
+| `views/network/BrProvisionPanel.tsx` | mới — `NmxGrid` cards + status badge + Accept/Reject dialog (REST) | ✅ B3 |
 
 ---
 
@@ -264,6 +264,6 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 - [x] Batch 2 (phần model + migration): `BrThreadDataset` model + 1:1 cascade + `WeaveSecretProtector` (DataProtection) + `NetworkDto` ở root `Dtos/` (`Namorix.Weave.Dtos`, ngoài BorderRouter) — class `Network`/`BrThreadDataset`, bảng `Networks`/`BrThreadDataset` (tên DbSet, không `ToTable`, bỏ hẳn `BrNetwork`); migration `20260814022928_InitialCreate` (cả 2 bảng) **đã apply** (verified 2026-08-14)
 - [x] Batch 2 (phần còn lại): accept/reject/blacklist (`Status=Rejected` + unique Eui64 index) + Offline + SignalR events (registry-changed) — `BrProvisioningService.AcceptAsync`/`RejectAsync`/`MarkOfflineAsync` + `WeaveHub.AcceptNetwork`/`RejectNetwork` + `ApplyDatasetAsync` (SetPanId→StartThread khi BR online) + `NetworkChanged` (`ZigbeeCoordinator` deferred)
 - [x] Batch 3 (mục 1–4): types `Network`/`NetworkStatus` + SignalR `NetworkList`/`NetworkChanged` + store `devices`/selectors + `useNetworks` hook (tsc sạch)
-- [ ] Batch 3 (còn lại): hub invoke `AcceptNetwork`/`RejectNetwork` + `BrProvisionPanel` (bảng + Accept/Reject dialog) + wire tab + i18n en/vi + version bump 0.4.0
+- [x] Batch 3 (còn lại): REST `NetworkController` (`POST /api/networks/{id}/accept|reject`) + `network.controller.ts` (thay hub invoke) + `BrProvisionPanel` (`NmxGrid` + Accept/Reject dialog) + wire `NetworkView` list/`ThreadNetworkView` detail + i18n `en.json` + version bump **0.4.2 → 0.5.0** (vi.json deferred — user bỏ qua)
 - [ ] Batch 4: ECDSA P-256 keypair + challenge-response + pin `(Eui64, PublicKey)` + JWT ES256 reconnect
 - [ ] Verify: spoof Eui64 bị chặn; reject → backoff dài, không spam Pending; disconnect → `Offline`; accept → data channel chạy
