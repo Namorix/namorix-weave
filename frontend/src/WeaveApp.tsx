@@ -9,8 +9,7 @@ import {
 } from "@namorix/ui"
 import type { NmxRailItemData } from "@namorix/ui"
 import "./i18n"
-import { useAddonMode, useIsStandalone } from "@namorix/core"
-import { useSessionGuard } from "./hooks/useSessionGuard"
+import { useAddonMode, useIsStandalone, useSessionGuard } from "@namorix/core"
 import { store } from "./store/store"
 import { NetworkView } from "./views/network/NetworkView"
 
