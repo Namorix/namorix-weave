@@ -5,11 +5,11 @@
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
-      "applicationUrl": "http://localhost:5101",
+      "applicationUrl": "http://localhost:5100",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "NMX_DESKTOP_API_URL": "http://localhost:5001",
-        "NMX_DESKTOP_GRPC_URL": "http://localhost:5002",
+        "NMX_DESKTOP_API_URL": "http://localhost:5000",
+        "NMX_DESKTOP_GRPC_URL": "http://localhost:5001",
         "NMX_REGISTRATION_TOKEN": "40b42f2c83f844c2a3d8ef6afbc60087"
       }
     },

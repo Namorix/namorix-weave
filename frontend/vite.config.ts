@@ -4,8 +4,8 @@ import { federation } from "@module-federation/vite"
 
 export default defineConfig((config) => {
   const env = loadEnv(config.mode, new URL(".", import.meta.url).pathname, "")
-  const frontendPort = parseInt(env.ADDON_FRONTEND_PORT || "5010", 10)
-  const backendPort = parseInt(env.ADDON_BACKEND_PORT || "5011", 10)
+  const frontendPort = parseInt(env.ADDON_FRONTEND_PORT || "5102", 10)
+  const backendPort = parseInt(env.ADDON_BACKEND_PORT || "5100", 10)
   const addonHost = env.ADDON_HOST ?? "http://localhost"
   const frontendUrl = `${addonHost}:${frontendPort}`
   const backendUrl = `${addonHost}:${backendPort}`
@@ -47,10 +47,20 @@ export default defineConfig((config) => {
     server: {
       host: "0.0.0.0",
       port: frontendPort,
+      hmr: {
+        port: frontendPort,
+        // Browser connects HMR websocket through Kestrel (backendPort) in dev,
+        // which YARP forwards to this Vite server.
+        clientPort: backendPort,
+      },
+      allowedHosts: true,
       cors: true,
       proxy: {
-        "/.well-known": backendUrl,
-        "/hubs": backendUrl,
+        // changeOrigin:false giữ nguyên Host gốc (VD localhost:5102) — backend cần nó
+        // để dựng redirect_uri + cookie scoping đúng FE origin.
+        "/.well-known": { target: backendUrl, changeOrigin: false },
+        "/api": { target: backendUrl, changeOrigin: false },
+        "/hubs": { target: backendUrl, changeOrigin: false },
       },
     },
     build: {
