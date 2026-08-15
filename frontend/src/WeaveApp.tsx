@@ -6,6 +6,7 @@ import {
   NmxRailList,
   NmxRailContent,
   NmxIconFontSymbol,
+  NmxLoadingOverlay,
 } from "@namorix/ui"
 import type { NmxRailItemData } from "@namorix/ui"
 import "./i18n"
@@ -25,7 +26,10 @@ const TABS: NmxRailItemData<WeaveTab>[] = [
 export const WeaveApp: React.FC = () => {
   const { t } = useTranslation()
   const isStandalone = useIsStandalone()
-  useSessionGuard()
+  const guard = useSessionGuard()
+
+  if (guard === "loading") return <NmxLoadingOverlay />
+  if (guard === "unauthorized") return null
 
   return (
     <Provider store={store}>
