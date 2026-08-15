@@ -55,3 +55,8 @@ public sealed record BrJoinerEntryDto(
     string SharedId,
     string Pskd,
     uint ExpirationTime);
+
+public sealed record BrTablesDto(
+    IReadOnlyList<BrRouterEntryDto> Router,
+    IReadOnlyList<BrChildEntryDto> Child,
+    IReadOnlyList<BrJoinerEntryDto> Joiner);

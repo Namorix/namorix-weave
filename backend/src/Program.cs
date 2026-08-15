@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Namorix.Core.AddonSession;
 using Namorix.Core.Extensions;
@@ -9,18 +10,25 @@ using Namorix.Core.OAuth;
 using Namorix.Weave.BorderRouter;
 using Namorix.Weave.Constants;
 using Namorix.Weave.Hubs;
+using Namorix.Weave.Infrastructure;
 using Namorix.Weave.Persistence;
 using Namorix.Weave.Services;
 using Namorix.Weave.Services.BorderRouter;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var addon = NmxAddonConfig.FromEnvironment();
+
+// Core DI: controllers + JSON (WhenWritingNull) + flat-file logging + rate limiter + notifiers → WeaveHub
+builder.Services.AddNamorixCore<WeaveHub>(builder.Environment.IsDevelopment(), o =>
+{
+    o.DataBasePath = addon.DataDir;
+    o.HubPath = SignalRPath.HubWeave;
+});
+
 builder.Services.AddNmxOAuth2Client();
 builder.Services.AddAddonChannelClient();
 builder.Services.AddHostedService<WeaveService>();
-
-builder.Services.AddSignalR();
-builder.Services.AddMemoryCache();
 
 builder.Services.AddDevViteReverseProxy(builder.Environment, builder.Configuration);
 
@@ -31,7 +39,6 @@ builder.Services.AddOptions<BrOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-var addon = NmxAddonConfig.FromEnvironment();
 var dbPath = Path.Combine(addon.DataDir, "weave.db");
 
 builder.Services.AddSingleton(new DataDirectory(addon.DataDir));
@@ -59,17 +66,27 @@ builder.Services.AddSingleton(sp =>
         sp.GetRequiredService<ILogger<BrProvisioningService>>());
 });
 
+// Notifiers wrap IHubContext only — stateless, singleton-safe. BrConnectionService
+// (singleton hosted service) và controllers đều resolve cùng instance.
+builder.Services.AddSingleton<INetworkNotifier, SignalRNetworkNotifier>();
+builder.Services.AddSingleton<IBrNotifier, SignalRBrNotifier>();
+
 // Singleton so WeaveHub can resolve the same instance DI hosts as a hosted service.
 builder.Services.AddSingleton<BrConnectionService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<BrConnectionService>());
 
 var app = builder.Build();
 
-app.UseChromeDevToolsProbe404();
-app.UseAddonSessionAuth();
-app.MapControllers();
-app.MapHub<WeaveHub>(SignalRPath.HubWeave);
-app.MapDevViteReverseProxy(builder.Environment);
+app.UseNamorixCore<WeaveHub>(
+    configurePipeline: a =>
+    {
+        a.UseChromeDevToolsProbe404();
+        a.UseAddonSessionAuth();
+    },
+    configureEndpoints: e =>
+    {
+        e.MapDevViteReverseProxy(builder.Environment);
+    });
 
 using (var scope = app.Services.CreateScope())
 {

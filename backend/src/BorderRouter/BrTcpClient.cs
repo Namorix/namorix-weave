@@ -115,6 +115,10 @@ public sealed class BrTcpClient(string host, int port, ILogger<BrTcpClient> logg
                     Dispatch(frame!);
             }
         }
+        catch (IOException ex) when (ex.InnerException is SocketException { SocketErrorCode: SocketError.ConnectionReset })
+        {
+            logger.LogInformation("BR reset connection (reboot/reconnect) — retrying.");
+        }
         finally
         {
             client.Close();
@@ -140,7 +144,9 @@ public sealed class BrTcpClient(string host, int port, ILogger<BrTcpClient> logg
 
     public async ValueTask DisposeAsync()
     {
-        _cts?.Cancel();
+        if (_cts is not null)
+            await _cts.CancelAsync();
+
         if (_runTask is not null)
         {
             try

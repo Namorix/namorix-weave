@@ -28,10 +28,10 @@ public static class BrDtoMapper
     public static NetworkDto ToNetwork(Network network) =>
         new(
             network.Id,
-            network.Protocol.ToString(),
+            network.Protocol.ToString().ToLowerInvariant(),
             network.Name,
             network.Host,
-            network.Status.ToString(),
+            network.Status.ToString().ToLowerInvariant(),
             network.Eui64,
             network.PublicKey,
             network.FirstSeenAt,

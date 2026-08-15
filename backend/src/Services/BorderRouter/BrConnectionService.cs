@@ -1,22 +1,21 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using Namorix.Weave.BorderRouter;
 using Namorix.Weave.BorderRouter.Dtos;
 using Namorix.Weave.BorderRouter.Frame;
 using Namorix.Weave.BorderRouter.Models;
 using Namorix.Weave.BorderRouter.Parsers;
-using Namorix.Weave.Constants;
 using Namorix.Weave.Dtos;
-using Namorix.Weave.Hubs;
+using Namorix.Weave.Infrastructure;
 using Namorix.Weave.Models;
 
 namespace Namorix.Weave.Services.BorderRouter;
 
 public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningService provisioning,
-    IHubContext<WeaveHub> hub, IOptions<BrOptions> options, ILogger<BrConnectionService> logger,
+    INetworkNotifier networkNotifier, IBrNotifier brNotifier,
+    IOptions<BrOptions> options, ILogger<BrConnectionService> logger,
     ILogger<BrTcpClient> brClientLogger)
     : BackgroundService
 {
@@ -91,10 +90,9 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
         _ = client.DisposeAsync();
         if (br is not null && br.Status == NetworkStatus.Connected)
         {
-            _ = SafePushAsync(ct => PushConnectionAsync(false, br, ct), CancellationToken.None);
-            _ = MarkOfflineAndPushAsync(br.NetworkId, CancellationToken.None);
+            _ = SafePushAsync(ct => brNotifier.NotifyConnectionChanged(br.NetworkId, false, null, null), CancellationToken.None);
+            _ = MarkOfflineAndNotifyAsync(br.NetworkId, CancellationToken.None);
         }
-        _ = PushNetworkListAsync(CancellationToken.None);
     }
 
     private async Task OnClientConnectedAsync(BrEndpoint ep, BrTcpClient client)
@@ -122,7 +120,7 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
 
             logger.LogInformation("BR {Eui64} registered (instance={Instance}, status={Status}).",
                 network.Eui64, ep.InstanceName, network.Status);
-            await PushNetworkListAsync(CancellationToken.None);
+            await networkNotifier.NotifyListChanged();
         }
         catch (Exception ex)
         {
@@ -138,10 +136,9 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
         logger.LogInformation("BR {Instance} disconnected.", ep.InstanceName);
         if (br.Status == NetworkStatus.Connected)
         {
-            await SafePushAsync(ct => PushConnectionAsync(false, br, ct), CancellationToken.None);
-            await MarkOfflineAndPushAsync(br.NetworkId, CancellationToken.None);
+            await SafePushAsync(ct => brNotifier.NotifyConnectionChanged(br.NetworkId, false, null, null), CancellationToken.None);
+            await MarkOfflineAndNotifyAsync(br.NetworkId, CancellationToken.None);
         }
-        await PushNetworkListAsync(CancellationToken.None);
     }
 
     private void OnFrameReceived(BrEndpoint ep, BrTcpClient client, BrFrame frame)
@@ -163,15 +160,15 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
             logger.LogInformation("BR NOTIFY mask=0x{X8}", (uint)mask);
 
             if (mask.HasFlag(BrChangedMask.Role) || mask.HasFlag(BrChangedMask.Ip))
-                await SafePushAsync(ct => PushStateAsync(br, ct), _stopping);
+                await SafePushAsync(ct => brNotifier.NotifyStateChanged(br.NetworkId), _stopping);
             if (mask.HasFlag(BrChangedMask.Dataset))
-                await SafePushAsync(ct => PushDatasetAsync(br, ct), _stopping);
+                await SafePushAsync(ct => brNotifier.NotifyDatasetChanged(br.NetworkId), _stopping);
             if (mask.HasFlag(BrChangedMask.RouterTable))
-                await SafePushAsync(ct => PushRouterTableAsync(br, ct), _stopping);
+                await SafePushAsync(ct => brNotifier.NotifyRouterTableChanged(br.NetworkId), _stopping);
             if (mask.HasFlag(BrChangedMask.ChildTable))
-                await SafePushAsync(ct => PushChildTableAsync(br, ct), _stopping);
+                await SafePushAsync(ct => brNotifier.NotifyChildTableChanged(br.NetworkId), _stopping);
             if (mask.HasFlag(BrChangedMask.JoinerTable))
-                await SafePushAsync(ct => PushJoinerTableAsync(br, ct), _stopping);
+                await SafePushAsync(ct => brNotifier.NotifyJoinerTableChanged(br.NetworkId), _stopping);
         }
         catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
         {
@@ -218,8 +215,8 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
 
             if (becameConnected)
             {
-                await SafePushAsync(ct2 => PushConnectionAsync(true, br, ct2), ct);
-                await PushConnectedSnapshotAsync(br, ct);
+                await SafePushAsync(ct2 => brNotifier.NotifyConnectionChanged(br.NetworkId, true, br.Endpoint.Host, br.Endpoint.Port), ct);
+                await SafePushAsync(ct2 => NotifyDataChangedAsync(br), ct);
                 continue;
             }
 
@@ -234,8 +231,8 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
 
         try
         {
-            var health = BrHealthParser.Parse(await br.CommandClient.GetBrHealthAsync(ct));
-            await hub.Clients.All.SendAsync(WeaveSignalREvents.BrHealth, BrDtoMapper.ToHealth(health), ct);
+            await br.CommandClient.GetBrHealthAsync(ct);
+            await brNotifier.NotifyHealthChanged(br.NetworkId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -254,76 +251,96 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
             logger.LogDebug(ex, "BR {Source} poll skipped (not connected).", source);
     }
 
-    private async Task PushConnectedSnapshotAsync(ActiveBr br, CancellationToken ct)
+    // -- REST snapshot queries (live BR data; null => no active BR or query failed) --
+
+    public async Task<BrStateDto?> GetStateAsync(int networkId, CancellationToken ct)
     {
-        await SafePushAsync(ct2 => PushStateAsync(br, ct2), ct);
-        await SafePushAsync(ct2 => PushDatasetAsync(br, ct2), ct);
-        await SafePushAsync(ct2 => PushRouterTableAsync(br, ct2), ct);
-        await SafePushAsync(ct2 => PushChildTableAsync(br, ct2), ct);
-        await SafePushAsync(ct2 => PushJoinerTableAsync(br, ct2), ct);
+        var br = FindActive(networkId);
+        if (br is null) return null;
+
+        try
+        {
+            var role = BrStateParser.Parse(await br.CommandClient.GetStateAsync(ct));
+            var ip = await TryGetIpAsync(br, ct);
+            var version = await TryGetThreadVersionAsync(br, ct);
+            br.PublishedRole = role;
+            return BrDtoMapper.ToState(role, ip, version, new BrConnectionDto(true, br.Endpoint.Host, br.Endpoint.Port));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "BR state snapshot failed for network {NetworkId}.", networkId);
+            return null;
+        }
     }
 
-    private async Task PushConnectionAsync(bool connected, ActiveBr br, CancellationToken ct)
+    public async Task<BrDatasetDto?> GetDatasetAsync(int networkId, CancellationToken ct)
     {
-        var dto = connected
-            ? new BrConnectionDto(true, br.Endpoint.Host, br.Endpoint.Port)
-            : new BrConnectionDto(false, null, null);
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.BrConnection, dto, ct);
+        var br = FindActive(networkId);
+        if (br is null) return null;
+
+        try
+        {
+            var payload = await br.CommandClient.GetDatasetActiveAsync(ct);
+            return BrDtoMapper.ToDataset(new BrActiveDataset(payload));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "BR dataset snapshot failed for network {NetworkId}.", networkId);
+            return null;
+        }
     }
 
-    private async Task PushStateAsync(ActiveBr br, CancellationToken ct)
+    public async Task<BrTablesDto?> GetTablesAsync(int networkId, CancellationToken ct)
     {
-        var role = BrStateParser.Parse(await br.CommandClient.GetStateAsync(ct));
-        var ip = await TryGetIpAsync(br, ct);
-        var version = await TryGetThreadVersionAsync(br, ct);
+        var br = FindActive(networkId);
+        if (br is null) return null;
 
-        br.PublishedRole = role;
-        await hub.Clients.All.SendAsync(
-            WeaveSignalREvents.BrState,
-            BrDtoMapper.ToState(role, ip, version, new BrConnectionDto(true, br.Endpoint.Host, br.Endpoint.Port)),
-            ct);
+        try
+        {
+            var router = BrTableParser.ParseRouterTable(await br.CommandClient.GetRouterTableAsync(ct))
+                .Select(BrDtoMapper.ToRouterEntry).ToArray();
+            var child = BrTableParser.ParseChildTable(await br.CommandClient.GetChildTableAsync(ct))
+                .Select(BrDtoMapper.ToChildEntry).ToArray();
+            var joiner = BrTableParser.ParseJoinerTable(await br.CommandClient.GetJoinerTableAsync(ct))
+                .Select(BrDtoMapper.ToJoinerEntry).ToArray();
+            return new BrTablesDto(router, child, joiner);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "BR tables snapshot failed for network {NetworkId}.", networkId);
+            return null;
+        }
     }
 
-    private async Task PushDatasetAsync(ActiveBr br, CancellationToken ct)
+    private ActiveBr? FindActive(int networkId) =>
+        _active.Values.FirstOrDefault(b => b.NetworkId == networkId);
+
+    private async Task NotifyDataChangedAsync(ActiveBr br)
     {
-        var payload = await br.CommandClient.GetDatasetActiveAsync(ct);
-        var dto = BrDtoMapper.ToDataset(new BrActiveDataset(payload));
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.BrDataset, dto, ct);
+        await brNotifier.NotifyStateChanged(br.NetworkId);
+        await brNotifier.NotifyDatasetChanged(br.NetworkId);
+        await brNotifier.NotifyRouterTableChanged(br.NetworkId);
+        await brNotifier.NotifyChildTableChanged(br.NetworkId);
+        await brNotifier.NotifyJoinerTableChanged(br.NetworkId);
     }
 
-    private async Task PushRouterTableAsync(ActiveBr br, CancellationToken ct)
-    {
-        var payload = await br.CommandClient.GetRouterTableAsync(ct);
-        var dto = BrTableParser.ParseRouterTable(payload).Select(BrDtoMapper.ToRouterEntry).ToArray();
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.BrRouterTable, dto, ct);
-    }
-
-    private async Task PushChildTableAsync(ActiveBr br, CancellationToken ct)
-    {
-        var payload = await br.CommandClient.GetChildTableAsync(ct);
-        var dto = BrTableParser.ParseChildTable(payload).Select(BrDtoMapper.ToChildEntry).ToArray();
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.BrChildTable, dto, ct);
-    }
-
-    private async Task PushJoinerTableAsync(ActiveBr br, CancellationToken ct)
-    {
-        var payload = await br.CommandClient.GetJoinerTableAsync(ct);
-        var dto = BrTableParser.ParseJoinerTable(payload).Select(BrDtoMapper.ToJoinerEntry).ToArray();
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.BrJoinerTable, dto, ct);
-    }
-
-    private async Task PushNetworkListAsync(CancellationToken ct)
-    {
-        var networks = await provisioning.ListNetworksAsync(ct);
-        var dto = networks.Select(BrDtoMapper.ToNetwork).ToArray();
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkList, dto, ct);
-    }
-
-    private async Task MarkOfflineAndPushAsync(int networkId, CancellationToken ct)
+    private async Task MarkOfflineAndNotifyAsync(int networkId, CancellationToken ct)
     {
         var network = await provisioning.MarkOfflineAsync(networkId, ct);
         if (network is not null)
-            await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkChanged, BrDtoMapper.ToNetwork(network), ct);
+            await networkNotifier.NotifyChanged(BrDtoMapper.ToNetwork(network));
     }
 
     public async Task<NetworkDto?> AcceptAsync(int networkId, NetworkAcceptRequest request, CancellationToken ct)
@@ -336,7 +353,7 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
         if (br is not null && br.Client.IsConnected && request.Dataset is not null)
             await SafePushAsync(ct2 => ApplyDatasetAsync(br, request.Dataset, ct2), ct);
 
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkChanged, BrDtoMapper.ToNetwork(network), ct);
+        await networkNotifier.NotifyChanged(BrDtoMapper.ToNetwork(network));
         return BrDtoMapper.ToNetwork(network);
     }
 
@@ -354,7 +371,7 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
                 _ = client.DisposeAsync();
         }
 
-        await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkChanged, BrDtoMapper.ToNetwork(network), ct);
+        await networkNotifier.NotifyChanged(BrDtoMapper.ToNetwork(network));
         return BrDtoMapper.ToNetwork(network);
     }
 
