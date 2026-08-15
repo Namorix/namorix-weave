@@ -1,5 +1,6 @@
 node_modules
 frontend/dist
+frontend/packages
 backend/data
 package-lock.json
 pnpm-lock.yaml
