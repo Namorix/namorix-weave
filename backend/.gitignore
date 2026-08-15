@@ -1,4 +1,5 @@
 data/
+identifier.sqlite
 
 *.db
 *.db-shm
