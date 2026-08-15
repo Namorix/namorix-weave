@@ -5,6 +5,8 @@
     <RootNamespace>Namorix.Weave</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Core controllers (addon session auth) are registered via AddAddonSessionAuth's AddApplicationPart. -->
+    <GenerateMvcApplicationPartsAssemblyAttributes>false</GenerateMvcApplicationPartsAssemblyAttributes>
   </PropertyGroup>
 
   <ItemGroup>

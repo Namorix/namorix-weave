@@ -1,15 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using Namorix.Core.AddonSession;
 using Namorix.Weave.Models;
 
 namespace Namorix.Weave.Persistence;
 
-public sealed class WeaveDbContext(DbContextOptions<WeaveDbContext> options) : DbContext(options)
+public sealed class WeaveDbContext(DbContextOptions<WeaveDbContext> options) : AddonSessionDbContext(options)
 {
     public DbSet<Network> Networks => Set<Network>();
 
     public DbSet<BrThreadDataset> BrThreadDataset => Set<BrThreadDataset>();
-
-    public DbSet<AddonSession> Sessions => Set<AddonSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

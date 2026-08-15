@@ -1,13 +1,12 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Namorix.Core.AddonSession;
 using Namorix.Core.Grpc;
 using Namorix.Core.IO;
 using Namorix.Core.OAuth;
 using Namorix.Weave.BorderRouter;
 using Namorix.Weave.Constants;
-using Namorix.Weave.Endpoints;
-using Namorix.Weave.Extensions;
 using Namorix.Weave.Hubs;
 using Namorix.Weave.Persistence;
 using Namorix.Weave.Services;
@@ -64,8 +63,8 @@ else
     builder.Services.AddReverseProxy();
 }
 
-builder.Services.AddSingleton<AddonSessionService>();
-builder.Services.AddSingleton<WeaveOAuthService>();
+builder.Services.AddAddonSessionAuth<WeaveDbContext>(o =>
+    builder.Configuration.GetSection(AddonSessionAuthOptions.SectionName).Bind(o));
 builder.Services.AddOptions<BrOptions>()
     .Bind(builder.Configuration.GetSection(BrOptions.SectionName))
     .ValidateDataAnnotations()
@@ -116,9 +115,10 @@ app.Map("/.well-known/appspecific/com.chrome.devtools.json", static appBuilder =
     });
 });
 
-app.UseWeaveSessionAuth();
-app.MapNmxOAuthConfig();
-app.MapWeaveAuthEndpoints();
+// No /.well-known/nmx-oauth-config: addon auth is backend-mediated only (gRPC addon channel),
+// so core createMount's browser OAuth (desktop token endpoints → nmx_addon_refresh_token) is never triggered.
+app.UseAddonSessionAuth();
+app.MapControllers();
 app.MapHub<WeaveHub>(SignalRPath.HubWeave);
 app.MapReverseProxy();
 
