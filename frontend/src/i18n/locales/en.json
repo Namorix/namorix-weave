@@ -9,11 +9,42 @@
     }
   },
   "network": {
+    "title": "Network",
     "tabs": {
       "overview": "Overview",
       "dataset": "Dataset",
       "mesh": "Mesh",
       "joiner": "Joiner"
+    },
+    "statusLabel": {
+      "Pending": "Pending",
+      "Connected": "Connected",
+      "Offline": "Offline",
+      "Rejected": "Rejected"
+    },
+    "list": {
+      "empty": "No border routers discovered yet",
+      "protocol": "Protocol",
+      "host": "Host",
+      "eui64": "EUI-64",
+      "firstSeen": "First seen",
+      "accept": "Accept",
+      "reject": "Reject",
+      "open": "Open"
+    },
+    "acceptDialog": {
+      "title": "Accept border router",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Living room",
+      "submit": "Accept"
+    },
+    "rejectDialog": {
+      "title": "Reject border router",
+      "body": "This border router will be blocked and will not appear as pending again.",
+      "confirm": "Reject"
+    },
+    "common": {
+      "cancel": "Cancel"
     },
     "joiner": {
       "add": "Add joiner"

@@ -1,5 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit"
-import { networkReducer } from "./slices/networkSlice"
+import { networkReducer } from "./slices"
 
 export const store = configureStore({
   reducer: {

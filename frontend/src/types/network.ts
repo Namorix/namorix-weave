@@ -72,3 +72,20 @@ export interface Network {
   acceptedAt?: string
   rejectedAt?: string
 }
+
+export interface ThreadDatasetInput {
+  panId: number
+  extendedPanId: number[]
+  channel: number
+  channelMask: number
+  networkName?: string | null
+  meshLocalPrefix: number[]
+  networkKey: number[]
+  pskc: number[]
+  securityPolicy: number[]
+}
+
+export interface NetworkAcceptRequest {
+  name?: string | null
+  dataset?: ThreadDatasetInput | null
+}

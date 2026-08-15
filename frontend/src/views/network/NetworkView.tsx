@@ -1,73 +1,36 @@
-import React from "react"
-import { useTranslation } from "react-i18next"
+import React, { useState } from "react"
 import {
   NmxIconFontSymbol,
-  NmxInlineAlert,
   NmxToolbar,
   NmxToolbarContent,
   NmxToolbarHeader,
-  NmxToolbarList,
 } from "@namorix/ui"
-import type { NmxToolbarItemData } from "@namorix/ui"
-import { useAppSelector } from "../../store/hooks"
-import { selectNetworkError } from "../../store/selectors/networkSelectors"
-import { useOtbrData } from "../../hooks/useOtbrData"
-import { OtbrStatusPanel } from "./OtbrStatusPanel"
-import { ThreadDatasetPanel } from "./ThreadDatasetPanel"
-import { ThreadMeshPanel } from "./ThreadMeshPanel"
-import { ThreadJoinerPanel } from "./ThreadJoinerPanel"
-
-type NetworkTab = "overview" | "dataset" | "mesh" | "joiner"
-
-const TABS: NmxToolbarItemData<NetworkTab>[] = [
-  {
-    key: "overview",
-    icon: NmxIconFontSymbol.STATS,
-    label: "network.tabs.overview",
-  },
-  {
-    key: "dataset",
-    icon: NmxIconFontSymbol.SECURITY,
-    label: "network.tabs.dataset",
-  },
-  { key: "mesh", icon: NmxIconFontSymbol.NODES, label: "network.tabs.mesh" },
-  {
-    key: "joiner",
-    icon: NmxIconFontSymbol.DEVICE,
-    label: "network.tabs.joiner",
-  },
-]
+import { useTranslation } from "react-i18next"
+import { BrProvisionPanel } from "./BrProvisionPanel"
+import { ThreadNetworkView } from "./ThreadNetworkView"
 
 export const NetworkView: React.FC = () => {
   const { t } = useTranslation()
-  useOtbrData()
+  const [selectedId, setSelectedId] = useState<number | null>(null)
 
-  const error = useAppSelector(selectNetworkError)
-
-  if (error) {
-    return <NmxInlineAlert semantic="error" message={error} />
+  if (selectedId != null) {
+    return (
+      <ThreadNetworkView
+        networkId={selectedId}
+        onBack={() => setSelectedId(null)}
+      />
+    )
   }
 
   return (
-    <NmxToolbar<NetworkTab> defaultTab="overview">
+    <NmxToolbar>
       <NmxToolbarHeader
-        title="Network"
+        title={t("network.title")}
         icon={NmxIconFontSymbol.NETWORK}
         onBack={() => {}}
-      >
-        <NmxToolbarList items={TABS} t={t} />
-      </NmxToolbarHeader>
-      <NmxToolbarContent<NetworkTab> tabKey="overview">
-        <OtbrStatusPanel />
-      </NmxToolbarContent>
-      <NmxToolbarContent<NetworkTab> tabKey="dataset">
-        <ThreadDatasetPanel />
-      </NmxToolbarContent>
-      <NmxToolbarContent<NetworkTab> tabKey="mesh">
-        <ThreadMeshPanel />
-      </NmxToolbarContent>
-      <NmxToolbarContent<NetworkTab> tabKey="joiner">
-        <ThreadJoinerPanel />
+      />
+      <NmxToolbarContent>
+        <BrProvisionPanel onSelect={setSelectedId} />
       </NmxToolbarContent>
     </NmxToolbar>
   )

@@ -42,7 +42,7 @@ export default defineConfig((config) => {
           : undefined,
     },
     optimizeDeps: {
-      exclude: ["@namorix/core"],
+      exclude: ["@namorix/core", "@floating-ui/react"],
     },
     server: {
       host: "0.0.0.0",

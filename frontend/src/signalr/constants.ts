@@ -4,14 +4,14 @@ export const WeaveSignalRGroups = {
 
 export const WeaveSignalREvents = {
   BrConnection: WeaveSignalRGroups.BorderRouter + ":connection",
+  NetworkList: WeaveSignalRGroups.BorderRouter + ":network-list",
+  NetworkChanged: WeaveSignalRGroups.BorderRouter + ":network-changed",
   BrState: WeaveSignalRGroups.BorderRouter + ":state",
   BrHealth: WeaveSignalRGroups.BorderRouter + ":health",
   BrDataset: WeaveSignalRGroups.BorderRouter + ":dataset",
   BrRouterTable: WeaveSignalRGroups.BorderRouter + ":router-table",
   BrChildTable: WeaveSignalRGroups.BorderRouter + ":child-table",
   BrJoinerTable: WeaveSignalRGroups.BorderRouter + ":joiner-table",
-  NetworkList: WeaveSignalRGroups.BorderRouter + ":network-list",
-  NetworkChanged: WeaveSignalRGroups.BorderRouter + ":network-changed",
 } as const
 
 export type WeaveSignalRGroupsType =

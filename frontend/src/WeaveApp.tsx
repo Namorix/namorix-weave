@@ -49,6 +49,7 @@ export const WeaveApp: React.FC = () => {
         <NmxRailContent<WeaveTab>
           tabKey="network"
           spacingVerticalDisabled={true}
+          spacingHorizontalDisabled={true}
         >
           <NetworkView />
         </NmxRailContent>
