@@ -3,6 +3,7 @@ import type {
   BrConnectionStatus,
   ChildEntry,
   JoinerEntry,
+  Network,
   OtbrStatus,
   RouterEntry,
   ThreadDataset,
@@ -28,6 +29,25 @@ function toNormalizedTable<T extends { id: string }>(
   return { byId, order }
 }
 
+interface NormalizedNetworkTable {
+  byId: Record<number, Network>
+  order: number[]
+}
+
+function toNormalizedNetworks(
+  networks: readonly Network[],
+): NormalizedNetworkTable {
+  const byId: Record<number, Network> = {}
+  const order: number[] = []
+
+  for (const network of networks) {
+    byId[network.id] = network
+    order.push(network.id)
+  }
+
+  return { byId, order }
+}
+
 interface NetworkState {
   connection: BrConnectionStatus
   role: ThreadRole
@@ -37,6 +57,7 @@ interface NetworkState {
   routerTable: NormalizedTable<RouterEntry>
   childTable: NormalizedTable<ChildEntry>
   joinerTable: NormalizedTable<JoinerEntry>
+  devices: NormalizedNetworkTable
   loading: boolean
   error: string | null
 }
@@ -50,6 +71,7 @@ const initialState: NetworkState = {
   routerTable: { byId: {}, order: [] },
   childTable: { byId: {}, order: [] },
   joinerTable: { byId: {}, order: [] },
+  devices: { byId: {}, order: [] },
   loading: false,
   error: null,
 }
@@ -79,6 +101,15 @@ const slice = createSlice({
     },
     setJoinerTable(state, action: PayloadAction<JoinerEntry[]>) {
       state.joinerTable = toNormalizedTable(action.payload)
+    },
+    setNetworkList(state, action: PayloadAction<Network[]>) {
+      state.devices = toNormalizedNetworks(action.payload)
+    },
+    upsertNetwork(state, action: PayloadAction<Network>) {
+      const network = action.payload
+      const existing = state.devices.byId[network.id]
+      state.devices.byId[network.id] = network
+      if (!existing) state.devices.order.push(network.id)
     },
     setLoading(state, action: PayloadAction<boolean>) {
       state.loading = action.payload

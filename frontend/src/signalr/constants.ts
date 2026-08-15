@@ -10,6 +10,8 @@ export const WeaveSignalREvents = {
   BrRouterTable: WeaveSignalRGroups.BorderRouter + ":router-table",
   BrChildTable: WeaveSignalRGroups.BorderRouter + ":child-table",
   BrJoinerTable: WeaveSignalRGroups.BorderRouter + ":joiner-table",
+  NetworkList: WeaveSignalRGroups.BorderRouter + ":network-list",
+  NetworkChanged: WeaveSignalRGroups.BorderRouter + ":network-changed",
 } as const
 
 export type WeaveSignalRGroupsType =

@@ -1,6 +1,12 @@
 import { createSelector } from "@reduxjs/toolkit"
 import type { RootState } from "../store"
-import type { ChildEntry, JoinerEntry, RouterEntry } from "../../types/network"
+import type {
+  ChildEntry,
+  JoinerEntry,
+  Network,
+  NetworkStatus,
+  RouterEntry,
+} from "../../types/network"
 
 const selectNetwork = (state: RootState) => state.network
 
@@ -56,4 +62,26 @@ export const selectJoinerEntries = createSelector(
     table.order
       .map((id) => table.byId[id])
       .filter((entry): entry is JoinerEntry => entry != null),
+)
+
+export const selectNetworks = createSelector(
+  (state: RootState) => state.network.devices,
+  (table) =>
+    table.order
+      .map((id) => table.byId[id])
+      .filter((network): network is Network => network != null),
+)
+
+export const selectNetworkCountByStatus = createSelector(
+  selectNetworks,
+  (networks) => {
+    const counts: Record<NetworkStatus, number> = {
+      Pending: 0,
+      Connected: 0,
+      Offline: 0,
+      Rejected: 0,
+    }
+    for (const network of networks) counts[network.status] += 1
+    return counts
+  },
 )

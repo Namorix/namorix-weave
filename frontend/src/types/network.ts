@@ -57,3 +57,18 @@ export interface JoinerEntry {
   pskd: string
   expirationTime: number
 }
+
+export type NetworkStatus = "Pending" | "Connected" | "Offline" | "Rejected"
+
+export interface Network {
+  id: number
+  protocol: string
+  name?: string
+  host?: string
+  status: NetworkStatus
+  eui64?: string
+  publicKey?: string
+  firstSeenAt?: string
+  acceptedAt?: string
+  rejectedAt?: string
+}
