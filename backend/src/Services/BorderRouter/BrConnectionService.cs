@@ -9,13 +9,14 @@ using Namorix.Weave.BorderRouter.Frame;
 using Namorix.Weave.BorderRouter.Models;
 using Namorix.Weave.BorderRouter.Parsers;
 using Namorix.Weave.Constants;
+using Namorix.Weave.Dtos;
 using Namorix.Weave.Hubs;
 using Namorix.Weave.Models;
 
 namespace Namorix.Weave.Services.BorderRouter;
 
 public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningService provisioning,
-    IHubContext<BrHub> hub, IOptions<BrOptions> options, ILogger<BrConnectionService> logger,
+    IHubContext<WeaveHub> hub, IOptions<BrOptions> options, ILogger<BrConnectionService> logger,
     ILogger<BrTcpClient> brClientLogger)
     : BackgroundService
 {
@@ -89,7 +90,10 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
         _active.TryRemove(ep.InstanceName, out var br);
         _ = client.DisposeAsync();
         if (br is not null && br.Status == NetworkStatus.Connected)
+        {
             _ = SafePushAsync(ct => PushConnectionAsync(false, br, ct), CancellationToken.None);
+            _ = MarkOfflineAndPushAsync(br.NetworkId, CancellationToken.None);
+        }
         _ = PushNetworkListAsync(CancellationToken.None);
     }
 
@@ -133,7 +137,10 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
 
         logger.LogInformation("BR {Instance} disconnected.", ep.InstanceName);
         if (br.Status == NetworkStatus.Connected)
+        {
             await SafePushAsync(ct => PushConnectionAsync(false, br, ct), CancellationToken.None);
+            await MarkOfflineAndPushAsync(br.NetworkId, CancellationToken.None);
+        }
         await PushNetworkListAsync(CancellationToken.None);
     }
 
@@ -310,6 +317,57 @@ public sealed class BrConnectionService(BrMdnsBrowser browser, BrProvisioningSer
         var networks = await provisioning.ListNetworksAsync(ct);
         var dto = networks.Select(BrDtoMapper.ToNetwork).ToArray();
         await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkList, dto, ct);
+    }
+
+    private async Task MarkOfflineAndPushAsync(int networkId, CancellationToken ct)
+    {
+        var network = await provisioning.MarkOfflineAsync(networkId, ct);
+        if (network is not null)
+            await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkChanged, BrDtoMapper.ToNetwork(network), ct);
+    }
+
+    public async Task<NetworkDto?> AcceptAsync(int networkId, NetworkAcceptRequest request, CancellationToken ct)
+    {
+        var network = await provisioning.AcceptAsync(networkId, request, ct);
+        if (network is null)
+            return null;
+
+        var br = _active.Values.FirstOrDefault(b => b.NetworkId == networkId);
+        if (br is not null && br.Client.IsConnected && request.Dataset is not null)
+            await SafePushAsync(ct2 => ApplyDatasetAsync(br, request.Dataset, ct2), ct);
+
+        await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkChanged, BrDtoMapper.ToNetwork(network), ct);
+        return BrDtoMapper.ToNetwork(network);
+    }
+
+    public async Task<NetworkDto?> RejectAsync(int networkId, CancellationToken ct)
+    {
+        var network = await provisioning.RejectAsync(networkId, ct);
+        if (network is null)
+            return null;
+
+        var br = _active.Values.FirstOrDefault(b => b.NetworkId == networkId);
+        if (br is not null)
+        {
+            _active.TryRemove(br.Endpoint.InstanceName, out _);
+            if (_clients.TryRemove(br.Endpoint.InstanceName, out var client))
+                _ = client.DisposeAsync();
+        }
+
+        await hub.Clients.All.SendAsync(WeaveSignalREvents.NetworkChanged, BrDtoMapper.ToNetwork(network), ct);
+        return BrDtoMapper.ToNetwork(network);
+    }
+
+    private async Task ApplyDatasetAsync(ActiveBr br, ThreadDatasetInput dataset, CancellationToken ct)
+    {
+        var client = br.CommandClient;
+        await client.SetPanIdAsync(dataset.PanId, ct);
+        await client.SetChannelAsync(dataset.Channel, ct);
+        if (dataset.NetworkName is not null)
+            await client.SetNetworkNameAsync(dataset.NetworkName, ct);
+        await client.SetExtendedPanIdAsync(dataset.ExtendedPanId, ct);
+        await client.SetNetworkKeyAsync(dataset.NetworkKey, ct);
+        await client.StartThreadAsync(ct);
     }
 
     private async Task SafePushAsync(Func<CancellationToken, Task> push, CancellationToken ct)
