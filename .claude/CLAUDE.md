@@ -63,11 +63,11 @@ import { NmxRail, NmxRailList, NmxRailContent } from "@namorix/ui"
 
 ```bash
 # Frontend (from frontend/)
-cd frontend && pnpm dev           # Vite dev server — port $ADDON_FRONTEND_PORT (default 5100)
+cd frontend && pnpm dev           # Vite dev server — port $ADDON_FRONTEND_PORT (default 5102)
 cd frontend && pnpm build         # Production build (vite build)
 
 # Backend (from backend/)
-cd backend && make run            # dotnet run — port $ADDON_BACKEND_PORT (default 5101)
+cd backend && make run            # dotnet run — port $ADDON_BACKEND_PORT (default 5100)
 cd backend && make watch          # dotnet watch run
 cd backend && make build          # dotnet build Namorix.Weave.sln
 
@@ -75,14 +75,14 @@ cd backend && make build          # dotnet build Namorix.Weave.sln
 cd frontend && pnpm docker:prod   # docker compose down && up --build
 ```
 
-`frontend/.env`: `ADDON_FRONTEND_PORT=5100`, `ADDON_BACKEND_PORT=5101`, `ADDON_HOST=http://localhost`. Dev server proxies `/.well-known` to the backend.
+`frontend/.env`: `ADDON_FRONTEND_PORT=5102`, `ADDON_BACKEND_PORT=5100`, `ADDON_HOST=http://localhost`. Dev server proxies `/.well-known` to the backend.
 
-## Current Status (v0.3.0)
+## Current Status (v0.4.0)
 
-Scaffold + Network monitoring UI now fed by live Border-Router data over SignalR.
-- **Backend:** `WeaveService` connects over gRPC and pings Namorix with a `widget-event` (`{"event":"ready"}`). The BR integration stack browses mDNS `_thread-border-router-frame._tcp` (`BrMdnsBrowser`, Makaretu) và connect-out tới ESP32-S3 border-router trên TCP `CONFIG_BR_FRAME_TCP_PORT` :5150 (`BrTcpClient`), poll STATE/health/dataset/table rồi push live snapshots qua SignalR `/hubs/weave` (`border-router:*`, shared constants trong `Constants/WeaveSignalR.cs`). Provisioning layer (Batch 2): SQLite/EF Core riêng — `Network`/`BrThreadDataset` (bảng `Networks`/`BrThreadDataset`), `BrProvisioningService` handshake Eui64 → row `Pending`, `SecretProtector` (AesGcm) — UI "Add border router" chưa làm.
+Scaffold + Network monitoring UI now fed by live Border-Router data over SignalR. Session auth (OAuth user login qua desktop) + single-origin dev proxy (YARP → Vite) added in v0.4.0.
+- **Backend:** `WeaveService` connects over gRPC and pings Namorix with a `widget-event` (`{"event":"ready"}`). The BR integration stack browses mDNS `_thread-border-router-frame._tcp` (`BrMdnsBrowser`, Makaretu) và connect-out tới ESP32-S3 border-router trên TCP `CONFIG_BR_FRAME_TCP_PORT` :5150 (`BrTcpClient`), poll STATE/health/dataset/table rồi push live snapshots qua SignalR `/hubs/weave` (`border-router:*`, shared constants trong `Constants/WeaveSignalR.cs`). Provisioning layer (Batch 2): SQLite/EF Core riêng — `Network`/`BrThreadDataset` (bảng `Networks`/`BrThreadDataset`), `BrProvisioningService` handshake Eui64 → row `Pending`, accept/reject/offline, `WeaveSecretProtector` (DataProtection) — UI "Add border router" chưa làm.
 - **Frontend:** `WeaveApp` wraps the shell in a Redux store and defaults to the Network tab. A core singleton is built from the `@namorix/core` factory pattern in `src/config/coreConfig.ts` (`createNmxCore({ hubsPath: "/hubs/weave" })` + signalr hooks), imported side-effect in `bootstrap.tsx`. `NetworkView` shows an OTBR/Thread dashboard — `NmxToolbar` sub-tabs (Overview, Dataset, Mesh, Joiner) with connection status, active dataset, and router/child/joiner tables. Live data flows through `src/signalr/` (`WeaveSignalREvents` constants + `useSignalR`/`useSignalREvent`/`useSignalRStatus` hooks) into `hooks/useOtbrData.ts`, which dispatches into `networkSlice`. Dashboard/Devices/Settings tabs are still placeholders.
-- Real Thread/device monitoring (multi-device beyond the border-router) is not implemented yet; port 5100 is the addon's web entry (`addon.json`).
+- Real Thread/device monitoring (multi-device beyond the border-router) is not implemented yet; port 5102 is the addon's web entry (`addon.json`).
 
 ---
 

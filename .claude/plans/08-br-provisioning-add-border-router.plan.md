@@ -105,13 +105,13 @@ public enum Protocol { Thread = 0, Zigbee = 1 }
 public enum NetworkStatus { Pending = 0, Connected = 1, Offline = 2, Rejected = 3 }
 ```
 - **`Network.cs`** ✅ (Batch 1 + B2) — base entity: `Id`, `Protocol`, `Name`, `Host`, `Status = Pending`, `Eui64`/`PublicKey` (nullable, Thread-only), `FirstSeenAt`/`AcceptedAt`/`RejectedAt`/`CreatedAt`. **Thêm nav 1:1 `BrThreadDataset? ThreadDataset`** (B2). **Class giữ `Network`, bảng = `Networks`** (tên DbSet `Networks` — convention namorix, không `ToTable`, **bỏ hẳn prefix `Br`**).
-- **`BrThreadDataset.cs`** ✅ (Batch 2, mới) — **class giữ `BrThreadDataset`, bảng = `BrThreadDataset`**. 1:1 với `Network`, **PK/FK = `NetworkId`**: `PanId`, `ExtendedPanId`, `Channel`, `ChannelMask`, `NetworkName`, `MeshLocalPrefix`, `NetworkKeyEncrypted` (**encrypt at rest** qua `SecretProtector`, base64 ciphertext — không lưu plaintext), `Pskc`, `SecurityPolicy`.
+- **`BrThreadDataset.cs`** ✅ (Batch 2, mới) — **class giữ `BrThreadDataset`, bảng = `BrThreadDataset`**. 1:1 với `Network`, **PK/FK = `NetworkId`**: `PanId`, `ExtendedPanId`, `Channel`, `ChannelMask`, `NetworkName`, `MeshLocalPrefix`, `NetworkKeyEncrypted` (**encrypt at rest** qua `WeaveSecretProtector`/DataProtection — không lưu plaintext), `Pskc`, `SecurityPolicy`.
 - **`ZigbeeCoordinator.cs`** ⏳ deferred — chưa làm.
 
 ### Data — `backend/src/Persistence/` (đã có `WeaveDbContext.cs`, `WeaveDbContextFactory.cs` từ Batch 1)
 - **`WeaveDbContext.cs`** ✅ (B1 + B2) — DbContext **riêng biệt** với core. `OnModelCreating`: enum `HasConversion<string>()`; **unique index `Eui64` + partial filter `IS NOT NULL`**; 1:1 `Network` ↔ `BrThreadDataset` (FK=PK `NetworkId`, **cascade delete**). DbSet: `DbSet<Network> Networks` (→ bảng `Networks`), `DbSet<BrThreadDataset> BrThreadDataset` (→ bảng `BrThreadDataset`).
 - **`WeaveDbContextFactory.cs`** ✅ (Batch 1) — design-time factory cho `dotnet ef` CLI (env `WEAVE_DB_CONNECTION`, fallback `Data Source=weave.db` — open: có nên trỏ về `NMX_DATA_DIR`).
-- **`Services/SecretProtector.cs`** ✅ (Batch 2, mới) — AesGcm (nonce 12B + tag 16B, base64 `nonce‖ct‖tag`), key 32B **tự sinh lần đầu** trong `data/weave.key` (owner-only). DI singleton từ `addon.DataDir` (Program.cs). Phục vụ `NetworkKeyEncrypted` lúc Accept.
+- **`Services/WeaveSecretProtector.cs`** ✅ (Batch 2, mới) — bọc `IDataProtectionProvider` (pattern `BcnSecretProtector` của Namorix): `CreateProtector("Weave.ThreadDataset")`, Protect/Unprotect idempotent (Magic prefix `CfDJ8`). Keyring DataProtection trỏ `addon.DataDir/keys` (Program.cs) — độc lập desktop. Phục vụ `NetworkKeyEncrypted` lúc Accept.
 
 ### Wiring — `Program.cs` ✅ (đã làm ở Batch 1)
 > **Đường dẫn DB theo `DataDirectory` của core** (`Namorix.Core.IO.DataDirectory`) — weave đã `ProjectReference` `Namorix.Core.csproj`. Base path lấy từ `NmxAddonConfig.DataDir` (env `NMX_DATA_DIR`, default `./data`) — **cùng thư mục chứa `oauth.json`**, nên DB nằm trong persisted volume của addon, tách hẳn khỏi core. Không phát minh env mới.
@@ -138,14 +138,7 @@ using (var scope = app.Services.CreateScope())
 > Dùng `AddDbContextFactory` (không phải `AddDbContext`) vì `BrProvisioningService` là **singleton** (resolve từ hosted service) — mỗi lệnh mở context mới, tránh scoped-from-singleton. `NmxAddonConfig.FromEnvironment()` idempotent (đã được `AddNmxOAuth2Client()` gọi) — gọi lại để có `DataDir` cho connection string lúc registration là an toàn. DB + `oauth.json` cùng thư mục → redeploy weave không đụng core, core restart không đụng file này.
 
 ### Migration
-- ✅ **`20260814012725_InitialCreate.cs`** (Batch 1) — tạo bảng `Networks`, apply ở startup `db.Database.Migrate()`.
-- ⏳ **Migration Batch 2 — đang sinh nhầm, phải sinh lại.** Bảng giữ `Networks` (bỏ hẳn `BrNetwork`), nên migration cũ `20260814021955_AddThreadDataset.cs` (đang `RenameTable Networks→BrNetwork`) **không dùng được**. Vì là migration cuối + chưa apply DB → **xoá rồi sinh lại** (chỉ `CreateTable "BrThreadDataset"`, PK/FK `NetworkId`, cascade delete — không rename):
-```bash
-make db-remove                    # dotnet ef migrations remove — xoá AddThreadDataset, revert snapshot
-make db-migrate name=AddThreadDataset   # sinh lại: chỉ CreateTable BrThreadDataset
-make db-update                    # dotnet ef database update — apply
-dotnet build
-```
+- ✅ **`20260814022928_InitialCreate.cs`** — một migration tạo **cả 2 bảng** `Networks` + `BrThreadDataset` (PK/FK `NetworkId`, FK cascade, unique index `Eui64` partial `IS NOT NULL`). **Đã apply** (`make db-update`, verified 2026-08-14 — `__EFMigrationsHistory` có `20260814022928_InitialCreate`, ProductVersion 10.0.9; row `Network` `Pending` trong `src/data/weave.db`). Migration `AddThreadDataset` cũ (đang rename `Networks→BrNetwork`) đã bị xoá, sinh lại gọn thành InitialCreate này.
 
 ### Accept/Reject + blacklist
 - **Accept** (Pending → Connected): admin đặt tên + chọn dataset → **tạo `ThreadDataset`** (admin nhập hoặc copy dataset active) → backend đẩy qua `SetPanId`/`SetChannel`/`SetNetworkName`/`SetExtendedPanId`/`SetNetworkKey` → `StartThread` → chốt `AcceptedAt`.
@@ -158,17 +151,20 @@ dotnet build
 
 ## Batch 3 — UI "Add border router" (frontend)
 
-- **`frontend/src/types/network.ts`** — mirror DTO:
+> **Đã xong (mục 1–4, 2026-08-15):** types + SignalR constants + store devices + hook. Còn lại: mục 5 hub invoke, 6 `BrProvisionPanel`, 7 wire tab, 8 i18n, 9 version bump 0.3.0 → 0.4.0.
+
+- **`frontend/src/types/network.ts`** ✅ — mirror DTO:
 ```ts
-type Protocol = "Thread" | "Zigbee"
 type NetworkStatus = "Pending" | "Connected" | "Offline" | "Rejected"
-interface Network { id: number; protocol: Protocol; name: string; host: string;
-  status: NetworkStatus; eui64?: string | null; publicKey?: string | null;
+interface Network { id: number; protocol: string; name?: string; host?: string;
+  status: NetworkStatus; eui64?: string; publicKey?: string;
   firstSeenAt?: string; acceptedAt?: string; rejectedAt?: string }
 ```
-  (`ThreadDataset` frontend type đã tồn tại trong `network.ts` — tái dùng/extension.)
-- **`frontend/src/hooks/useNetworks.ts`** (mới, pattern `useOtbrData`) — `useSignalREvent(WeaveSignalREvents.NetworkList/NetworkChanged)` → `networkActions`.
-- **`frontend/src/store/slices/networkSlice.ts`** — + slice cho danh sách devices.
+  (`protocol: string` mirror `NetworkDto.Protocol` string, không dùng literal union — Zigbee chưa có; có thể siết lại khi thêm protocol mới. `ThreadDataset` frontend type đã tồn tại trong `network.ts` — tái dùng/extension.)
+- **`frontend/src/signalr/constants.ts`** ✅ — `WeaveSignalREvents` + `NetworkList` (`:network-list`) + `NetworkChanged` (`:network-changed`).
+- **`frontend/src/hooks/useNetworks.ts`** ✅ (mới, pattern `useOtbrData`) — `useSignalREvent(WeaveSignalREvents.NetworkList/NetworkChanged)` → `networkActions.setNetworkList`/`upsertNetwork`.
+- **`frontend/src/store/slices/networkSlice.ts`** ✅ — + `devices` normalized table (`Record<number, Network>` + `order: number[]`) + reducer `setNetworkList` (replace) / `upsertNetwork` (upsert 1 row).
+- **`frontend/src/store/selectors/networkSelectors.ts`** ✅ — `selectNetworks` (ordered) + `selectNetworkCountByStatus` (badge count theo status).
 - **Panel mới** trong **`NetworkView.tsx`** — tái dùng pattern `ThreadJoinerPanel.tsx` (`NmxCardContainer` + `NmxAlign` + `NmxButton` "Add border router" + `NmxCardSection` + `NmxDataTable`):
   - Cột: protocol badge (hiện chỉ Thread), Name, Host, Eui64, status badge (Pending/Connected/Offline/Rejected — màu riêng từng trạng thái), hành động **Accept / Reject**.
   - Empty state (`fallbackConditions`).
@@ -208,21 +204,22 @@ interface Network { id: number; protocol: Protocol; name: string; host: string;
 | `Models/BrThreadDataset.cs` | mới — 1:1 detail Thread, PK/FK = `NetworkId` (B2) | ✅ B2 |
 | `Models/ZigbeeCoordinator.cs` | mới — skeleton | ⏳ deferred |
 | `Dtos/NetworkDto.cs` | mới — DTO của entity chính `Network`; **root `Dtos/` + namespace `Namorix.Weave.Dtos`, ngoài BorderRouter** (vì là lớp chính, không phải BR-specific) | ✅ B2 |
-| `Services/SecretProtector.cs` | mới — AesGcm encrypt at rest, key `data/weave.key` (B2) | ✅ B2 |
+| `Services/WeaveSecretProtector.cs` | mới — bọc `IDataProtectionProvider` (pattern `BcnSecretProtector`), purpose `Weave.ThreadDataset`; keyring `addon.DataDir/keys` (B2) | ✅ B2 |
 | `Persistence/WeaveDbContext.cs` | mới — SQLite context riêng; DbSet `Networks`/`BrThreadDataset`, 1:1 cascade | ✅ B1+B2 |
 | `Persistence/WeaveDbContextFactory.cs` | mới — design-time factory | ✅ B1 |
-| `Migrations/` | `InitialCreate` (B1) + `AddThreadDataset` (B2 — **sinh lại**, xoá migration đang rename `BrNetwork`) | ✅ B1; ⏳ B2 |
+| `Migrations/` | `20260814022928_InitialCreate` — tạo cả 2 bảng `Networks` + `BrThreadDataset` (PK/FK `NetworkId`, cascade, unique Eui64 partial); **đã apply** | ✅ B2 |
 | `Namorix.Weave.csproj` | + `Microsoft.EntityFrameworkCore.Sqlite` (và Design) + `Makaretu.Dns.Multicast` | ✅ B1 |
 | `Services/BorderRouter/BrOptions.cs` | bỏ `Host`; thêm `MdnsServiceName` + `FramePort` :5150 | ✅ B1 |
 | `BorderRouter/BrMdnsBrowser.cs` | mới — browse mDNS, dedupe, `BrFound/BrLost` | ✅ B1 |
 | `BorderRouter/BrTcpClient.cs` | restore committed — connect-out + reconnect backoff | ✅ B1 |
 | `BorderRouter/Dtos/BrDtos.cs` + `BrDtoMapper.cs` | DTO/mapper BR-specific (state/health/dataset/tables/joiners); `NetworkDto` đã tách ra `Dtos/` root | ✅ B1+B2 |
-| `BorderRouter/BrCommandClient.cs` | refactor dùng `BrTcpClient`; + mã lỗi reject; + endpoint Accept/Reject | ✅ refactor B1; reject/Accept ⏳ B2 |
+| `BorderRouter/BrCommandClient.cs` | refactor dùng `BrTcpClient`; mã lỗi reject (B4) | ✅ B1; reject-code ⏳ B4 |
 | `BorderRouter/Frame/Commands.cs` | + command challenge/handshake/reject-code | ⏳ B4 |
-| `Services/BorderRouter/BrProvisioningService.cs` | mới — handshake Eui64 → row `Pending` | ✅ B1; accept/reject ⏳ B2 |
-| `Services/BorderRouter/BrConnectionService.cs` | multi-BR (1 client/BR), poll/push gate theo Status; disconnect → `Offline` | ✅ B1; Offline ⏳ B2 |
-| `Hubs/BrHub.cs` + `Constants` | + `NetworkList` event | ✅ B1; registry-changed ⏳ B2 |
-| `Program.cs` | + `DataDirectory` (từ `NmxAddonConfig.DataDir`) + `AddDbContextFactory` + `Migrate()` + `SecretProtector`; DI `BrMdnsBrowser`, `BrProvisioningService` | ✅ B1+B2 |
+| `Dtos/NetworkAcceptRequest.cs` | mới — `NetworkAcceptRequest` + `ThreadDatasetInput` (Payload Accept) | ✅ B2 |
+| `Services/BorderRouter/BrProvisioningService.cs` | mới — handshake Eui64 → row `Pending`; `AcceptAsync`/`RejectAsync`/`MarkOfflineAsync` (+ `WeaveSecretProtector` ctor) | ✅ B1+B2 |
+| `Services/BorderRouter/BrConnectionService.cs` | multi-BR (1 client/BR), poll/push gate theo Status; `AcceptAsync`/`RejectAsync` orchestration + `ApplyDatasetAsync` (Set*→StartThread); disconnect → `Offline` (`MarkOfflineAndPushAsync`) | ✅ B1+B2 |
+| `Hubs/WeaveHub.cs` + `Constants` | rename từ `BrHub`; `NetworkList` event; `AcceptNetwork`/`RejectNetwork`; + `NetworkChanged` | ✅ B1+B2 |
+| `Program.cs` | + `DataDirectory` (từ `NmxAddonConfig.DataDir`) + `AddDbContextFactory` + `Migrate()` + `AddDataProtection()` (keyring `data/keys`); DI `BrMdnsBrowser`, `BrProvisioningService` | ✅ B1+B2 |
 
 ### Firmware (`border-router-host`)
 | File | Thay đổi | Trạng thái |
@@ -235,13 +232,15 @@ interface Network { id: number; protocol: Protocol; name: string; host: string;
 | `main/transport/frame_tcp.c` (B4) | handshake nonce + sign | ⏳ B4 |
 
 ### Frontend (`frontend/src`)
-| File | Thay đổi |
-|---|---|
-| `types/network.ts` | `Protocol`, `NetworkStatus`, `Network` (mirror DTO) |
-| `hooks/useNetworks.ts` | mới — SignalR feed |
-| `store/slices/networkSlice.ts` | + devices |
-| `views/network/NetworkView.tsx` | + section/tab Add border router |
-| `views/network/BrProvisionPanel.tsx` | mới — bảng devices + Accept/Reject dialog |
+| File | Thay đổi | Trạng thái |
+|---|---|---|
+| `types/network.ts` | `NetworkStatus`, `Network` (mirror DTO) | ✅ B3 mục 1 |
+| `signalr/constants.ts` | `NetworkList` + `NetworkChanged` | ✅ B3 mục 2 |
+| `store/slices/networkSlice.ts` | + `devices` table + `setNetworkList`/`upsertNetwork` | ✅ B3 mục 3 |
+| `store/selectors/networkSelectors.ts` | `selectNetworks` + `selectNetworkCountByStatus` | ✅ B3 mục 3 |
+| `hooks/useNetworks.ts` | mới — SignalR feed | ✅ B3 mục 4 |
+| `views/network/NetworkView.tsx` | + section/tab Add border router | ⏳ B3 còn lại |
+| `views/network/BrProvisionPanel.tsx` | mới — bảng devices + Accept/Reject dialog | ⏳ B3 còn lại |
 
 ---
 
@@ -262,8 +261,9 @@ interface Network { id: number; protocol: Protocol; name: string; host: string;
 - [x] Phase 0: chốt hướng B (HA-style) — BR advertise mDNS + backend browse/connect-out
 - [x] Batch 1: backend browse mDNS + connect-out (`BrMdnsBrowser`/`BrConnectionService`), firmware server + mDNS, handshake Eui64 → `Pending` (kèm DB slice tối thiểu)
 - [x] Batch 1 verify: flash firmware → `avahi-browse` thấy BR → backend connect → row `Pending` trong DB (user xác nhận 2026-08-14)
-- [x] Batch 2 (phần model): `BrThreadDataset` model + 1:1 cascade + `SecretProtector` (AesGcm) + `NetworkDto` ở root `Dtos/` (`Namorix.Weave.Dtos`, ngoài BorderRouter) — class `Network`/`BrThreadDataset`, bảng `Networks`/`BrThreadDataset` (tên DbSet, không `ToTable`, bỏ hẳn `BrNetwork`)
-- [ ] Batch 2 (phần còn lại): migration sinh lại (`make db-remove` → `make db-migrate name=AddThreadDataset`, chỉ `CreateTable BrThreadDataset`, giữ `Networks`) + accept/reject/blacklist (`Status=Rejected` + unique Eui64 index) + Offline + SignalR events (`ZigbeeCoordinator` deferred)
-- [ ] Batch 3: UI Add border router (pattern Joiner) + status badges + Accept/Reject dialog
+- [x] Batch 2 (phần model + migration): `BrThreadDataset` model + 1:1 cascade + `WeaveSecretProtector` (DataProtection) + `NetworkDto` ở root `Dtos/` (`Namorix.Weave.Dtos`, ngoài BorderRouter) — class `Network`/`BrThreadDataset`, bảng `Networks`/`BrThreadDataset` (tên DbSet, không `ToTable`, bỏ hẳn `BrNetwork`); migration `20260814022928_InitialCreate` (cả 2 bảng) **đã apply** (verified 2026-08-14)
+- [x] Batch 2 (phần còn lại): accept/reject/blacklist (`Status=Rejected` + unique Eui64 index) + Offline + SignalR events (registry-changed) — `BrProvisioningService.AcceptAsync`/`RejectAsync`/`MarkOfflineAsync` + `WeaveHub.AcceptNetwork`/`RejectNetwork` + `ApplyDatasetAsync` (SetPanId→StartThread khi BR online) + `NetworkChanged` (`ZigbeeCoordinator` deferred)
+- [x] Batch 3 (mục 1–4): types `Network`/`NetworkStatus` + SignalR `NetworkList`/`NetworkChanged` + store `devices`/selectors + `useNetworks` hook (tsc sạch)
+- [ ] Batch 3 (còn lại): hub invoke `AcceptNetwork`/`RejectNetwork` + `BrProvisionPanel` (bảng + Accept/Reject dialog) + wire tab + i18n en/vi + version bump 0.4.0
 - [ ] Batch 4: ECDSA P-256 keypair + challenge-response + pin `(Eui64, PublicKey)` + JWT ES256 reconnect
 - [ ] Verify: spoof Eui64 bị chặn; reject → backoff dài, không spam Pending; disconnect → `Offline`; accept → data channel chạy
