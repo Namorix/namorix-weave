@@ -50,7 +50,11 @@ export const NetworkView: React.FC = () => {
 
   return (
     <NmxToolbar<NetworkTab> defaultTab="overview">
-      <NmxToolbarHeader>
+      <NmxToolbarHeader
+        title="Network"
+        icon={NmxIconFontSymbol.NETWORK}
+        onBack={() => {}}
+      >
         <NmxToolbarList items={TABS} t={t} />
       </NmxToolbarHeader>
       <NmxToolbarContent<NetworkTab> tabKey="overview">
