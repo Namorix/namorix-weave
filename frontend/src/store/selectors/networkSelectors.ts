@@ -76,10 +76,10 @@ export const selectNetworkCountByStatus = createSelector(
   selectNetworks,
   (networks) => {
     const counts: Record<NetworkStatus, number> = {
-      Pending: 0,
-      Connected: 0,
-      Offline: 0,
-      Rejected: 0,
+      pending: 0,
+      connected: 0,
+      offline: 0,
+      rejected: 0,
     }
     for (const network of networks) counts[network.status] += 1
     return counts

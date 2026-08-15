@@ -58,11 +58,29 @@ export interface JoinerEntry {
   expirationTime: number
 }
 
-export type NetworkStatus = "Pending" | "Connected" | "Offline" | "Rejected"
+export interface BrTables {
+  router: RouterEntry[]
+  child: ChildEntry[]
+  joiner: JoinerEntry[]
+}
+
+export interface BrConnectionChanged {
+  networkId: number
+  isConnected: boolean
+  host: string | null
+  port: number | null
+}
+
+export interface BrNotify {
+  networkId: number
+}
+
+export type NetworkStatus = "pending" | "connected" | "offline" | "rejected"
+export type NetworkProtocol = "thread"
 
 export interface Network {
   id: number
-  protocol: string
+  protocol?: NetworkProtocol
   name?: string
   host?: string
   status: NetworkStatus

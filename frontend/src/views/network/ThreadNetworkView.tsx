@@ -20,18 +20,18 @@ const TABS: NmxToolbarItemData<ThreadNetworkTab>[] = [
     {
         key: "overview",
         icon: NmxIconFontSymbol.STATS,
-        label: "network.tabs.overview",
+        label: "network.br.tabs.overview",
     },
     {
         key: "dataset",
         icon: NmxIconFontSymbol.SECURITY,
-        label: "network.tabs.dataset",
+        label: "network.br.tabs.dataset",
     },
-    { key: "mesh", icon: NmxIconFontSymbol.NODES, label: "network.tabs.mesh" },
+    { key: "mesh", icon: NmxIconFontSymbol.NODES, label: "network.br.tabs.mesh" },
     {
         key: "joiner",
         icon: NmxIconFontSymbol.DEVICE,
-        label: "network.tabs.joiner",
+        label: "network.br.tabs.joiner",
     },
 ]
 
@@ -41,11 +41,12 @@ interface ThreadNetworkViewProps {
 }
 
 export const ThreadNetworkView: React.FC<ThreadNetworkViewProps> = ({
+  networkId,
   onBack,
 }) => {
     const { t } = useTranslation()
 
-    useOtbrData()
+    useOtbrData(networkId)
 
     return <NmxToolbar<ThreadNetworkTab> defaultTab="overview">
         <NmxToolbarHeader

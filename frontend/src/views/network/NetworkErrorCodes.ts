@@ -1,0 +1,5 @@
+export const NetworkErrorCodes = {
+  NETWORK_NOT_FOUND: "NETWORK_NOT_FOUND",
+  INVALID_DATASET: "INVALID_DATASET",
+  BR_NOT_CONNECTED: "BR_NOT_CONNECTED",
+} as const

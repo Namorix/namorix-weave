@@ -1,26 +1,23 @@
 {
   "weave": {
-    "title": "Namorix Weave",
-    "tabs": {
-      "dashboard": "Dashboard",
-      "devices": "Devices",
-      "network": "Network",
-      "settings": "Settings"
-    }
+    "title": "Namorix Weave"
   },
   "network": {
     "title": "Network",
-    "tabs": {
-      "overview": "Overview",
-      "dataset": "Dataset",
-      "mesh": "Mesh",
-      "joiner": "Joiner"
+    "addDevice": "Add device",
+    "br": {
+      "tabs": {
+        "overview": "Overview",
+        "dataset": "Dataset",
+        "mesh": "Mesh",
+        "joiner": "Joiner"
+      }
     },
     "statusLabel": {
-      "Pending": "Pending",
-      "Connected": "Connected",
-      "Offline": "Offline",
-      "Rejected": "Rejected"
+      "pending": "Pending",
+      "connected": "Connected",
+      "offline": "Offline",
+      "rejected": "Rejected"
     },
     "list": {
       "empty": "No border routers discovered yet",
@@ -28,23 +25,34 @@
       "host": "Host",
       "eui64": "EUI-64",
       "firstSeen": "First seen",
+      "status": "Status",
       "accept": "Accept",
       "reject": "Reject",
-      "open": "Open"
+      "protocols": {
+        "thread": "Thread",
+        "unknown": "Unknown"
+      }
     },
     "acceptDialog": {
       "title": "Accept border router",
       "nameLabel": "Name",
       "namePlaceholder": "e.g. Living room",
-      "submit": "Accept"
+      "submit": "Accept",
+      "success": "Border router accepted"
     },
     "rejectDialog": {
       "title": "Reject border router",
       "body": "This border router will be blocked and will not appear as pending again.",
-      "confirm": "Reject"
+      "confirm": "Reject",
+      "success": "Border router rejected"
     },
     "common": {
       "cancel": "Cancel"
+    },
+    "errors": {
+      "networkNotFound": "Border router not found",
+      "invalidDataset": "Invalid Thread dataset",
+      "brNotConnected": "Border router is not connected"
     },
     "joiner": {
       "add": "Add joiner"

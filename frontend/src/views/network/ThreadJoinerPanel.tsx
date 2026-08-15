@@ -11,9 +11,8 @@ import {
   NmxIconFontSymbol,
 } from "@namorix/ui"
 import type { NmxDataTableColumn } from "@namorix/ui"
-import type { JoinerEntry } from "../../types/network"
-import { useAppSelector } from "../../store/hooks"
-import { selectJoinerEntries } from "../../store/selectors/networkSelectors"
+import type { JoinerEntry } from "../../types"
+import { useAppSelector, selectJoinerEntries } from "../../store"
 
 export const ThreadJoinerPanel: React.FC = () => {
   const { t } = useTranslation()

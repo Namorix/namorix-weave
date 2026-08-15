@@ -9,14 +9,14 @@ import {
   NmxMetaList,
   type NmxSemanticColor,
 } from "@namorix/ui"
-import type { ThreadRole } from "../../types/network"
-import { useAppSelector } from "../../store/hooks"
+import type { ThreadRole } from "../../types"
 import {
+  useAppSelector,
   selectConnection,
   selectIpAddress,
   selectThreadRole,
   selectThreadVersion,
-} from "../../store/selectors/networkSelectors"
+} from "../../store"
 
 const RoleKeys: Record<ThreadRole, string> = {
   disabled: "network.status.roleLabel.disabled",
