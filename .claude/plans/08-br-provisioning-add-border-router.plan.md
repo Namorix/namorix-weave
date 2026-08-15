@@ -45,11 +45,14 @@ Thiết kế ban đầu giả định **"backend listener + BR client connect-ou
    └─ persistence: SQLite `weave.db` (EF Core) — `Network` + detail tables
         |
         v
-[UI "Add border router"]  -- SignalR `/hubs/weave` --
-   ├─ list devices (tái dùng NmxDataTable pattern ThreadJoinerPanel)
-   ├─ Accept → đặt tên + tạo ThreadDataset → `Connected`
-   └─ Reject → giữ row `Rejected` (Eui64 bị chặn tự động)
+[UI "Add border router"]
+   ├─ REST `/api/networks` — lấy danh sách thiết bị + chi tiết/dataset (data)
+   ├─ SignalR `/hubs/weave` — CHỈ THÔNG BÁO có thay đổi (`border-router:*` notify) → refetch REST
+   ├─ Accept → REST `POST /api/networks/{id}/accept` (đặt tên + tạo ThreadDataset → `Connected`)
+   └─ Reject → REST `POST /api/networks/{id}/reject` (giữ row `Rejected`, Eui64 bị chặn tự động)
 ```
+
+**Nguyên tắc data-flow (chuẩn namorix, user chốt 2026-08-15):** SignalR `/hubs/weave` push **chỉ thông báo có thay đổi** (danh sách, trạng thái) — không đẩy full data. Dữ liệu danh sách/trạng thái/chi tiết lấy qua **REST**. Mutation cũng qua REST. So với pattern namorix (`MainHub` chỉ Subscribe/Unsubscribe + init cached; `SignalR*Notifier` push change-event; Controllers giữ list/history/mutation).
 
 **Boundary lúc Pending:** chỉ trao đổi identity (Eui64 + pubkey), **chưa** push data thật, chưa gán dataset. Admin duyệt xong mới được poll/join.
 
@@ -162,7 +165,7 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 ```
   (`protocol: string` mirror `NetworkDto.Protocol` string, không dùng literal union — Zigbee chưa có; có thể siết lại khi thêm protocol mới. `ThreadDataset` frontend type đã tồn tại trong `network.ts` — tái dùng/extension.)
 - **`frontend/src/signalr/constants.ts`** ✅ — `WeaveSignalREvents` + `NetworkList` (`:network-list`) + `NetworkChanged` (`:network-changed`).
-- **`frontend/src/hooks/useNetworks.ts`** ✅ (mới, pattern `useOtbrData`) — `useSignalREvent(WeaveSignalREvents.NetworkList/NetworkChanged)` → `networkActions.setNetworkList`/`upsertNetwork`.
+- **`frontend/src/hooks/useNetworks.ts`** ✅ (mới, pattern `useOtbrData`) — `useSignalREvent(WeaveSignalREvents.NetworkList/NetworkChanged)` → `networkActions.setNetworkList`/`upsertNetwork`. **⚠️ Deviation (refactor ở Batch 3.5):** subscribe full-list `NetworkList` + full-snapshot `useOtbrData` (7 events) — lệch chuẩn "SignalR notify-only + REST data".
 - **`frontend/src/store/slices/networkSlice.ts`** ✅ — + `devices` normalized table (`Record<number, Network>` + `order: number[]`) + reducer `setNetworkList` (replace) / `upsertNetwork` (upsert 1 row).
 - **`frontend/src/store/selectors/networkSelectors.ts`** ✅ — `selectNetworks` (ordered) + `selectNetworkCountByStatus` (badge count theo status).
 - **Panel mới** trong **`NetworkView.tsx`** — tái dùng pattern `ThreadJoinerPanel.tsx` (`NmxCardContainer` + `NmxAlign` + `NmxButton` "Add border router" + `NmxCardSection` + `NmxDataTable`):
@@ -172,6 +175,22 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 - **`WeaveApp.tsx`** — nếu cần route/tab (Network view hiện tại có thể đủ).
 
 **Verify Batch 3:** login desktop → Network view → thấy device Pending → Accept → `Connected` + data channel chạy → disconnect → `Offline` → Reject → row `Rejected`, không tái xuất hiện.
+
+---
+
+## Batch 3.5 — Refactor data-fetch: SignalR notify-only + REST data (chuẩn namorix) — ✅ XONG
+
+> **Nguyên tắc (user chốt 2026-08-15):** SignalR `/hubs/weave` **chỉ thông báo có thay đổi** (danh sách, trạng thái) — không đẩy full data. Dữ liệu danh sách/trạng thái/chi tiết **lấy qua REST** — khớp pattern namorix (`MainHub` chỉ Subscribe/Unsubscribe + init cached; `SignalR*Notifier` push change-event; Controllers giữ list/mutation). Batch 3 đã đúng chiều mutation (REST), còn chiều **data đang lệch** (push full list + full snapshot qua SignalR) → refactor.
+>
+> **Đã xong (2026-08-15):** refactor theo **lớp notifier chuẩn namorix** — `BrConnectionService` **không còn đụng `IHubContext`**:
+> - **Notifier layer (pattern namorix):** `Infrastructure/INetworkNotifier` + `IBrNotifier` (interface); `Hubs/SignalRNetworkNotifier` + `SignalRBrNotifier` (`IHubContext<WeaveHub>`, push về **`Clients.Group(...)`**). DI **singleton** (stateless wrapper `IHubContext`).
+> - **Group tách domain:** `WeaveSignalRGroups.Network = "network"` (protocol-agnostic) + `BorderRouter = "border-router"` (BR/Thread live). `WeaveHub` thêm `SubscribeNetwork/UnsubscribeNetwork/SubscribeBorderRouter/UnsubscribeBorderRouter` (client join group — FE `useServerSignalRGroup` invoke đúng tên), **bỏ `AcceptNetwork`/`RejectNetwork`** (mutation đã qua REST).
+> - **Network events:** `network:list-changed` (refetch list) + `network:changed` (payload `NetworkDto`, upsert) — thay `BrNetworkList`/`BrNetworkChanged` cũ (trước đây nhét trong group `border-router`).
+> - **BR live-data REST snapshot:** `GET /api/networks/{id}/br/state|dataset|tables` — **prefix `br`** (BR/Thread-specific; Zigbee sau dùng prefix riêng). `BrConnectionService` query **live BR** (không cache) → `BrStateDto`/`BrDatasetDto`/`BrTablesDto`; network không tồn tại → `404 NETWORK_NOT_FOUND`, BR không active/query fail → `409 BR_NOT_CONNECTED`.
+> - **`BrConnectionService`:** bỏ `IHubContext` hẳn, inject `INetworkNotifier` + `IBrNotifier`; poll/NOTIFY phát hiện thay đổi → bắn notify `{networkId}`; ngừng push full list/snapshot. Giữ `AcceptAsync`/`RejectAsync` orchestration + `ApplyDatasetAsync`.
+> - **Frontend:** `signalr/constants.ts` mirror group `network`/`border-router` + events notify `:*-changed`; `useNetworks` fetch REST list ban đầu + `useServerSignalRGroup(Network)` + subscribe `list-changed`→refetch / `changed`→upsert; `useOtbrData(networkId)` (ThreadNetworkView truyền `networkId` từ props) fetch snapshot REST + `useServerSignalRGroup(BorderRouter)` + subscribe notify → refetch thành phần; `network.controller.ts` thêm `getBrState/getBrDataset/getBrTables`; `weaveApiRoutes.ts` thêm `brState/brDataset/brTables`; `types/network.ts` thêm `BrTables`/`BrConnectionChanged`/`BrNotify`; `types/error.ts` thêm `BR_NOT_CONNECTED`.
+
+**Verify Batch 3.5:** connect BR → mở Network → list/detail qua REST; Accept qua REST; BR đổi state → SignalR notify → refetch REST → UI cập nhật. Không còn push full list/snapshot qua SignalR.
 
 ---
 
@@ -216,10 +235,14 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 | `BorderRouter/BrCommandClient.cs` | refactor dùng `BrTcpClient`; mã lỗi reject (B4) | ✅ B1; reject-code ⏳ B4 |
 | `BorderRouter/Frame/Commands.cs` | + command challenge/handshake/reject-code | ⏳ B4 |
 | `Dtos/NetworkAcceptRequest.cs` | mới — `NetworkAcceptRequest` + `ThreadDatasetInput` (Payload Accept) | ✅ B2 |
+| `Controllers/NetworkController.cs` | mới — `POST /api/networks/{id}/accept\|reject` (`[RequireAuth]`, `ApiResponse<NetworkDto>`, 404/400); **+ `GET /api/networks` list + `GET /api/networks/{id}` detail (B3.5); dùng `Error` constants thay string hardcode** | ✅ B3+B3.5 |
+| `Constants/Error.cs` | mới — error code constants: `NetworkNotFound`/`InvalidDataset` (không hardcode string) | ✅ B3.5 |
 | `Services/BorderRouter/BrProvisioningService.cs` | mới — handshake Eui64 → row `Pending`; `AcceptAsync`/`RejectAsync`/`MarkOfflineAsync` (+ `WeaveSecretProtector` ctor) | ✅ B1+B2 |
-| `Services/BorderRouter/BrConnectionService.cs` | multi-BR (1 client/BR), poll/push gate theo Status; `AcceptAsync`/`RejectAsync` orchestration + `ApplyDatasetAsync` (Set*→StartThread); disconnect → `Offline` (`MarkOfflineAndPushAsync`) | ✅ B1+B2 |
-| `Hubs/WeaveHub.cs` + `Constants` | rename từ `BrHub`; `NetworkList` event; `AcceptNetwork`/`RejectNetwork`; + `NetworkChanged` | ✅ B1+B2 |
-| `Program.cs` | + `DataDirectory` (từ `NmxAddonConfig.DataDir`) + `AddDbContextFactory` + `Migrate()` + `AddDataProtection()` (keyring `data/keys`); DI `BrMdnsBrowser`, `BrProvisioningService` | ✅ B1+B2 |
+| `Services/BorderRouter/BrConnectionService.cs` | multi-BR (1 client/BR), poll/push gate theo Status; `AcceptAsync`/`RejectAsync` orchestration + `ApplyDatasetAsync` (Set*→StartThread); disconnect → `Offline`; **notify-only: inject `INetworkNotifier`+`IBrNotifier` (bỏ `IHubContext`) + snapshot queries `GetStateAsync`/`GetDatasetAsync`/`GetTablesAsync` (B3.5)** | ✅ B1+B2+B3.5 |
+| `Hubs/WeaveHub.cs` + `Constants` | rename từ `BrHub`; **group `network` (`NetworkListChanged`/`NetworkChanged`) + `border-router` (`:*-changed` notify); `Subscribe*/Unsubscribe*`; bỏ `AcceptNetwork`/`RejectNetwork` (mutation qua REST) (B3.5)** | ✅ B1+B2+B3.5 |
+| `Infrastructure/INetworkNotifier.cs` + `Infrastructure/IBrNotifier.cs` | mới — notifier interfaces (pattern namorix `IBeaconNotifier`) | ✅ B3.5 |
+| `Hubs/SignalRNetworkNotifier.cs` + `Hubs/SignalRBrNotifier.cs` | mới — impl `IHubContext<WeaveHub>`, push về `Clients.Group(...)` (DI singleton, stateless) | ✅ B3.5 |
+| `Program.cs` | + `DataDirectory` (từ `NmxAddonConfig.DataDir`) + `AddDbContextFactory` + `Migrate()` + `AddDataProtection()` (keyring `data/keys`); DI `BrMdnsBrowser`, `BrProvisioningService`, `AddSingleton<INetworkNotifier, SignalRNetworkNotifier>` + `IBrNotifier` | ✅ B1+B2+B3.5 |
 
 ### Firmware (`border-router-host`)
 | File | Thay đổi | Trạng thái |
@@ -234,11 +257,15 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 ### Frontend (`frontend/src`)
 | File | Thay đổi | Trạng thái |
 |---|---|---|
-| `types/network.ts` | `NetworkStatus`, `Network` (mirror DTO) | ✅ B3 mục 1 |
-| `signalr/constants.ts` | `NetworkList` + `NetworkChanged` | ✅ B3 mục 2 |
+| `types/network.ts` | `NetworkStatus`, `Network` (mirror DTO) + `BrTables`/`BrConnectionChanged`/`BrNotify` | ✅ B3 mục 1 + B3.5 |
+| `signalr/constants.ts` | group `network` + `border-router`; events notify `network:list-changed`/`network:changed`/`border-router:*-changed` (mirror BE) | ✅ B3 mục 2 + B3.5 |
 | `store/slices/networkSlice.ts` | + `devices` table + `setNetworkList`/`upsertNetwork` | ✅ B3 mục 3 |
 | `store/selectors/networkSelectors.ts` | `selectNetworks` + `selectNetworkCountByStatus` | ✅ B3 mục 3 |
-| `hooks/useNetworks.ts` | mới — SignalR feed | ✅ B3 mục 4 |
+| `hooks/useNetworks.ts` | mới — `useServerSignalRGroup(Network)` + fetch REST list ban đầu; subscribe `list-changed`→refetch / `changed`→upsert | ✅ B3 mục 4 + B3.5 |
+| `hooks/useOtbrData.ts` | `useOtbrData(networkId)` — `useServerSignalRGroup(BorderRouter)` + fetch snapshot REST (`getBrState`/`getBrDataset`/`getBrTables`); subscribe notify `:*-changed` → refetch thành phần | ✅ B3 + B3.5 |
+| `controllers/network.controller.ts` | mới — `acceptNetwork`/`rejectNetwork` REST; + `list()`/`getDetail()`/`getBrState`/`getBrDataset`/`getBrTables` qua `weaveApiRoutes.ts` | ✅ B3+B3.5 |
+| `types/error.ts` | mới — `NetworkErrorCodes` (`NETWORK_NOT_FOUND`/`INVALID_DATASET`/`BR_NOT_CONNECTED`) + barrel `types/index.ts` | ✅ B3.5 |
+| `weaveApiRoutes.ts` | mới — `API_NETWORKS_BASE` + `WeaveApiRoutes` (`brState`/`brDataset`/`brTables`; route param là function — chuẩn namorix `apiRoutes.ts`) | ✅ B3.5 |
 | `views/network/NetworkView.tsx` | list + detail: `BrProvisionPanel` (list) ↔ `ThreadNetworkView` (detail, `onBack`) | ✅ B3 |
 | `views/network/BrProvisionPanel.tsx` | mới — `NmxGrid` cards + status badge + Accept/Reject dialog (REST) | ✅ B3 |
 
@@ -265,5 +292,7 @@ interface Network { id: number; protocol: string; name?: string; host?: string;
 - [x] Batch 2 (phần còn lại): accept/reject/blacklist (`Status=Rejected` + unique Eui64 index) + Offline + SignalR events (registry-changed) — `BrProvisioningService.AcceptAsync`/`RejectAsync`/`MarkOfflineAsync` + `WeaveHub.AcceptNetwork`/`RejectNetwork` + `ApplyDatasetAsync` (SetPanId→StartThread khi BR online) + `NetworkChanged` (`ZigbeeCoordinator` deferred)
 - [x] Batch 3 (mục 1–4): types `Network`/`NetworkStatus` + SignalR `NetworkList`/`NetworkChanged` + store `devices`/selectors + `useNetworks` hook (tsc sạch)
 - [x] Batch 3 (còn lại): REST `NetworkController` (`POST /api/networks/{id}/accept|reject`) + `network.controller.ts` (thay hub invoke) + `BrProvisionPanel` (`NmxGrid` + Accept/Reject dialog) + wire `NetworkView` list/`ThreadNetworkView` detail + i18n `en.json` + version bump **0.4.2 → 0.5.0** (vi.json deferred — user bỏ qua)
+- [x] Batch 3.5 (phần GET + error codes): `NetworkController` `GET /api/networks` + `GET /api/networks/{id}` + `Constants/Error.cs` (`NetworkNotFound`/`InvalidDataset`); FE `types/error.ts` (`NetworkErrorCodes`) + `weaveApiRoutes.ts` (`API_BASE` từ `@namorix/core`) + `network.controller.ts` `list()`/`getDetail()` (tsc sạch)
+- [x] Batch 3.5 (phần notify-only còn lại): **notifier layer chuẩn namorix** (`Infrastructure/INetworkNotifier` + `IBrNotifier`; `Hubs/SignalRNetworkNotifier` + `SignalRBrNotifier` push `Clients.Group`; DI singleton) — `BrConnectionService` bỏ `IHubContext`, chỉ inject notifier; **group `network`** (`network:list-changed`/`network:changed`) + `border-router` (`border-router:*-changed` notify `{networkId}`) — `WeaveHub` thêm `Subscribe*/Unsubscribe*`, bỏ `AcceptNetwork`/`RejectNetwork`; **REST snapshot** `GET /api/networks/{id}/br/state|dataset|tables` (prefix `br` — zigbee prefix riêng sau này; 404 `NETWORK_NOT_FOUND` / 409 `BR_NOT_CONNECTED`); FE mirror constants + `useNetworks`/`useOtbrData` fetch REST + subscribe notify — bỏ push full list/snapshot
 - [ ] Batch 4: ECDSA P-256 keypair + challenge-response + pin `(Eui64, PublicKey)` + JWT ES256 reconnect
 - [ ] Verify: spoof Eui64 bị chặn; reject → backoff dài, không spam Pending; disconnect → `Offline`; accept → data channel chạy
