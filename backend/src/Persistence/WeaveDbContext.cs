@@ -9,6 +9,8 @@ public sealed class WeaveDbContext(DbContextOptions<WeaveDbContext> options) : D
 
     public DbSet<BrThreadDataset> BrThreadDataset => Set<BrThreadDataset>();
 
+    public DbSet<AddonSession> Sessions => Set<AddonSession>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Network>(entity =>

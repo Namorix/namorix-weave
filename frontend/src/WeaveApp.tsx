@@ -10,6 +10,7 @@ import {
 import type { NmxRailItemData } from "@namorix/ui"
 import "./i18n"
 import { useAddonMode, useIsStandalone } from "@namorix/core"
+import { useSessionGuard } from "./hooks/useSessionGuard"
 import { store } from "./store/store"
 import { NetworkView } from "./views/network/NetworkView"
 
@@ -25,6 +26,7 @@ const TABS: NmxRailItemData<WeaveTab>[] = [
 export const WeaveApp: React.FC = () => {
   const { t } = useTranslation()
   const isStandalone = useIsStandalone()
+  useSessionGuard()
 
   return (
     <Provider store={store}>
