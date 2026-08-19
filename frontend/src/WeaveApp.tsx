@@ -27,6 +27,7 @@ export const WeaveApp: React.FC = () => {
   const { t } = useTranslation()
   const isStandalone = useIsStandalone()
   const guard = useSessionGuard()
+  const addonMode = useAddonMode()
 
   if (guard === "loading") return <NmxLoadingOverlay />
   if (guard === "unauthorized") return null
@@ -41,7 +42,7 @@ export const WeaveApp: React.FC = () => {
           showToggle={isStandalone}
         />
         <NmxRailContent<WeaveTab> tabKey="dashboard">
-          <h1>DashboardView: {useAddonMode()}</h1>
+          <h1>DashboardView: {addonMode}</h1>
         </NmxRailContent>
         <NmxRailContent<WeaveTab> tabKey="devices">
           <h1>DevicesView</h1>
