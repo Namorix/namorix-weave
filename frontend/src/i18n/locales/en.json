@@ -5,6 +5,7 @@
   "network": {
     "title": "Network",
     "addDevice": "Add device",
+    "refresh": "Refresh",
     "br": {
       "tabs": {
         "overview": "Overview",
