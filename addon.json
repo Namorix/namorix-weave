@@ -8,8 +8,8 @@
   "icon": "https://raw.githubusercontent.com/Namorix/namorix-weave/refs/heads/main/assets/icon.svg",
   "author": "IzeroCs",
   "repo": "https://github.com/Namorix/namorix-weave",
-  "image": "namorix/namorix-weave:prod",
-  "imageTag": "prod",
+  "image": "namorix/namorix-weave:latest",
+  "imageTag": "latest",
   "arch": ["amd64", "arm64"],
 
   "ports": [
